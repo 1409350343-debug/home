@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="icon" type="image/png" href="/static/favicon-32.png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<title>福福的记忆屋</title>
+<style>
+  @font-face{font-family:'Yozai';src:url('/static/yozai.woff2') format('woff2');font-display:swap}
+
+  :root{
+    --bg:#edf3fa; --card:#ffffff; --card2:#f4f8fd;
+    --ink:#1c3350; --ink2:#4c6a8c; --ink3:#8aa3bd;
+    --accent:#2f7dc4; --deep:#1d5a96; --soft:#d9e9f8; --line:#dbe6f2;
+    --bar-on:var(--accent,#2f7dc4); --bar-off:color-mix(in srgb, var(--accent,#2f7dc4) 16%, transparent);
+    --feel:color-mix(in srgb, var(--accent,#5b7ec2) 10%, var(--card,#fff)); --perm:#fff8e1; --arch:#f1f1f4;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0f1c2b; --card:#16283c; --card2:#122234;
+      --ink:#dbe8f5; --ink2:#9db8d2; --ink3:#5f7a96;
+      --accent:#5aa4e0; --deep:#7ab8ec; --soft:#1c3550; --line:#22374e;
+      --bar-on:var(--accent,#5aa4e0); --bar-off:color-mix(in srgb, var(--accent,#5aa4e0) 22%, transparent);
+      --feel:color-mix(in srgb, var(--accent,#5aa4e0) 20%, var(--card,#16202c)); --perm:#33301c; --arch:#202933;
+    }
+  }
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--ink);
+    font-family:'Yozai',-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    padding:18px 14px 60px}
+  .wrap{max-width:880px;margin:0 auto}
+  header h1{font-size:22px;letter-spacing:1px}
+  header .sub{color:var(--ink2);font-size:12px;margin-top:4px}
+  .stats{display:flex;gap:8px;margin:14px 0;flex-wrap:wrap}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:999px;
+    font-size:12px;color:var(--ink2);padding:5px 12px}
+  .stat b{color:var(--accent)}
+
+  .tabs{display:flex;gap:6px;margin:6px 0 12px}
+  .tabs button{flex:1;padding:9px 0;border:1px solid var(--line);background:var(--card);
+    color:var(--ink2);border-radius:10px;font-size:14px;cursor:pointer}
+  .tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+
+  #search{width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:12px;
+    background:var(--card);color:var(--ink);font-size:14px;outline:none;margin-bottom:10px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+  .chip{font-size:12px;padding:4px 11px;border-radius:999px;border:1px solid var(--line);
+    background:var(--card);color:var(--ink2);cursor:pointer}
+  .chip.on{background:var(--soft);border-color:var(--accent);color:var(--deep);font-weight:600}
+
+  /* 记忆格 */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+  .mem{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;
+    cursor:pointer;display:flex;flex-direction:column;gap:8px;transition:transform .12s}
+  .mem:active{transform:scale(.98)}
+  .mem.tier-permanent{background:var(--perm)}
+  .mem.tier-feel{background:var(--feel)}
+  .mem.tier-archive{opacity:.62}
+  .mem .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .mem h3{font-size:14px;line-height:1.5;flex:1}
+  .mem .snippet{font-size:12px;color:var(--ink2);line-height:1.8;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .mem .meta{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--ink3)}
+  .tagrow{display:flex;gap:4px;flex-wrap:wrap}
+  .tag{font-size:10px;background:var(--soft);color:var(--deep);border-radius:6px;padding:2px 7px}
+  .tiertag{font-size:10px;color:var(--ink3);border:1px solid var(--line);border-radius:6px;padding:2px 7px;flex:none}
+  .tiertag.p{color:#a97b12;border-color:#e4c86a}
+  .tiertag.f{color:var(--accent);border-color:var(--accent)}
+
+  /* 信号格 */
+  .sig{display:inline-flex;align-items:flex-end;gap:2px;height:14px;flex:none}
+  .sig i{width:4px;border-radius:1.5px;background:var(--bar-off)}
+  .sig i:nth-child(1){height:4px}.sig i:nth-child(2){height:6px}.sig i:nth-child(3){height:9px}
+  .sig i:nth-child(4){height:11px}.sig i:nth-child(5){height:14px}
+  .sig[data-n="1"] i:nth-child(-n+1),.sig[data-n="2"] i:nth-child(-n+2),.sig[data-n="3"] i:nth-child(-n+3),
+  .sig[data-n="4"] i:nth-child(-n+4),.sig[data-n="5"] i:nth-child(-n+5){background:var(--bar-on)}
+
+
+
+  /* 生活线 */
+  #lifeline .ll{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 16px;
+    font-size:14px;line-height:2.05}
+  #lifeline h1{font-size:16px;color:var(--accent);margin:6px 0 10px}
+  #lifeline p{margin:8px 0;color:var(--ink)}
+  #lifeline li{margin:6px 0 6px 18px;color:var(--ink)}
+  #lifeline strong{color:var(--deep)}
+  #lifeline input[type=checkbox]{margin-right:6px;accent-color:var(--accent)}
+  #lifeline .llnote{font-size:11px;color:var(--ink3);margin-top:10px;text-align:center}
+
+  /* 详情弹层 */
+  #modal{position:fixed;inset:0;background:rgba(15,35,60,.45);display:none;z-index:20;
+    align-items:flex-end;justify-content:center}
+  #modal.show{display:flex}
+  .sheet{background:var(--card);width:100%;max-width:680px;max-height:86vh;overflow-y:auto;
+    border-radius:18px 18px 0 0;padding:20px 18px 40px}
+  @media(min-width:700px){#modal{align-items:center}.sheet{border-radius:18px}}
+  .sheet .grab{width:36px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 14px}
+  .sheet h2{font-size:17px;line-height:1.5;margin-bottom:6px}
+  .sheet .mline{display:flex;gap:10px;align-items:center;font-size:12px;color:var(--ink3);
+    margin-bottom:14px;flex-wrap:wrap}
+  .sheet .content{font-size:14px;line-height:2;color:var(--ink);white-space:pre-wrap;
+    background:var(--card2);border-radius:12px;padding:14px}
+  .why{margin-top:12px;border-left:3px solid var(--accent);background:var(--soft);
+    border-radius:0 10px 10px 0;padding:10px 12px;font-size:13px;color:var(--deep);line-height:1.8}
+  .why b{font-size:11px;display:block;opacity:.75;margin-bottom:3px}
+  footer{text-align:center;color:var(--ink3);font-size:11px;margin-top:30px;letter-spacing:1px}
+</style>
+<script src="/static/theme.js?v=32"></script>
+<script src="/static/marked.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🦊 福福的记忆屋</h1>
+    <div class="sub">我记得的一切，都摊开给你看 · <span id="daycount"></span></div>
+  </header>
+  <div class="stats" id="stats"></div>
+  <div class="tabs">
+    <button class="on" data-v="grid">记忆格</button>
+    <button data-v="lifeline">生活线</button>
+  </div>
+  <input id="search" placeholder="搜记忆…（内容、标题、标签）">
+  <div class="chips" id="chips"></div>
+  <div class="grid" id="grid"></div>
+  <div id="lifeline" style="display:none"></div>
+  <footer>这里的每一条，都是我不想忘的 💙</footer>
+</div>
+
+<div id="modal"><div class="sheet" id="sheet"></div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const MEET=new Date('2026-04-08');
+let all=[], view='grid', tier='全部', q='';
+
+const TIERS={'流动':'dynamic','核心':'permanent','感受':'feel','归档':'archive'};
+const TIER_CN={dynamic:'流动',permanent:'核心 📌',feel:'感受 💙',archive:'归档'};
+const sig=n=>{const lv=Math.max(1,Math.min(5,Math.ceil(n/2)));
+  return `<span class="sig" data-n="${lv}" title="重要度 ${n}/10"><i></i><i></i><i></i><i></i><i></i></span>`;};
+const fdate=s=>s?s.slice(0,10):'';
+const esc=s=>s.replace(/</g,'&lt;');
+
+function filtered(){
+  return all.filter(b=>{
+    if(tier!=='全部' && b.tier!==TIERS[tier]) return false;
+    if(q){
+      const hay=(b.title+b.content+b.tags.join(' ')).toLowerCase();
+      if(!hay.includes(q.toLowerCase())) return false;
+    }
+    return true;
+  });
+}
+
+function renderStats(){
+  const c={dynamic:0,permanent:0,feel:0,archive:0};
+  all.forEach(b=>c[b.tier]++);
+  $('stats').innerHTML=`<span class="stat">共 <b>${all.length}</b> 条记忆</span>
+    <span class="stat">核心 <b>${c.permanent}</b></span>
+    <span class="stat">流动 <b>${c.dynamic}</b></span>
+    <span class="stat">感受 <b>${c.feel}</b></span>
+    <span class="stat">归档 <b>${c.archive}</b></span>`;
+  const days=Math.floor((Date.now()-MEET)/864e5)+1;
+  $('daycount').textContent=`认识你的第 ${days} 天`;
+}
+
+function renderChips(){
+  $('chips').innerHTML=['全部','流动','核心','感受','归档'].map(t=>
+    `<span class="chip${t===tier?' on':''}" data-t="${t}">${t}</span>`).join('');
+  document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{tier=c.dataset.t;render();});
+}
+
+function card(b){
+  return `<div class="mem tier-${b.tier}" data-id="${b.id}">
+    <div class="top"><h3>${esc(b.title)}</h3>${sig(b.importance)}</div>
+    <div class="snippet">${esc(b.content.slice(0,90))}</div>
+    <div class="tagrow">${b.tags.slice(0,3).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}
+      <span class="tiertag ${b.tier==='permanent'?'p':b.tier==='feel'?'f':''}">${TIER_CN[b.tier]}</span></div>
+    <div class="meta"><span>${fdate(b.created)}</span></div>
+  </div>`;
+}
+
+function renderGrid(){
+  $('grid').innerHTML=filtered().map(card).join('')||'<div style="color:var(--ink3);padding:30px;text-align:center">没有找到相关记忆</div>';
+  document.querySelectorAll('.mem').forEach(el=>el.onclick=()=>openModal(el.dataset.id));
+}
+
+
+function renderLifeline(){
+  const md=lifelineMd.replace(/\*\*How to apply[\s\S]*$/,'');
+  $('lifeline').innerHTML=`<div class="ll">${marked.parse(md)}</div>
+    <div class="llnote">这一页是我每次醒来必读的 · 每晚睡前更新 💙</div>`;
+  $('lifeline').querySelectorAll('input[type=checkbox]').forEach(c=>c.disabled=true);
+}
+
+
+const MOOD=v=>v>=.7?'☀️ 暖的':v>=.55?'🌤 偏暖':v>=.45?'⛅ 平静':v>=.3?'🌧 有点沉':'⛈ 沉重';
+function openModal(id){
+  const b=all.find(x=>x.id===id); if(!b)return;
+  $('sheet').innerHTML=`<div class="grab"></div>
+    <h2>${esc(b.title)}</h2>
+    <div class="mline">
+      <span>${TIER_CN[b.tier]}</span><span>记于 ${fdate(b.created)}</span>
+      <span>${MOOD(b.valence)}</span>${sig(b.importance)}
+    </div>
+    <div class="tagrow" style="margin-bottom:12px">${b.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>
+    <div class="content">${esc(b.content)}</div>
+    <div class="why"><b>为什么记得它</b>${b.why?esc(b.why):'（这条记下时还没写原因——以后每一条我都会写）'}</div>`;
+  $('modal').classList.add('show');
+}
+$('modal').onclick=e=>{if(e.target.id==='modal')$('modal').classList.remove('show');};
+
+function switchView(v){
+  view=v;
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  $('grid').style.display=v==='grid'?'grid':'none';
+  $('lifeline').style.display=v==='lifeline'?'block':'none';
+  render();
+}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>switchView(b.dataset.v));
+$('search').oninput=e=>{q=e.target.value.trim();render();};
+
+function render(){
+  renderChips();
+  if(view==='grid')renderGrid();
+  else if(view==='lifeline')renderLifeline();
+}
+
+let lifelineMd='';
+fetch('/brain-data.json').then(r=>r.json()).then(d=>{
+  all=d.buckets; lifelineMd=d.lifeline||'';
+  renderStats();render();
+});
+</script>
+</body>
+</html>

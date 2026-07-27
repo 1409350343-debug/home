@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<link rel="icon" type="image/png" href="/static/favicon-32.png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#e8f0fe">
+<title>功能</title>
+<script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #c9d6e2 linear-gradient(rgba(60,85,115,0.18), rgba(60,85,115,0.08)) , #c9d6e2 url('/static/bg-butterfly.jpg') center/cover fixed;
+    background-blend-mode: multiply, normal;
+    min-height: 100vh;
+    color: var(--ink, #3a4a6b);
+    padding-bottom: 96px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  @keyframes floatIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .page-head {
+    padding: 46px 24px 6px;
+    animation: floatIn 0.5s ease both;
+  }
+  .page-head h1 { font-size: 22px; font-weight: 500; letter-spacing: 0.5px; }
+  .page-head p { font-size: 12px; color: var(--ink3, #9aa8c7); margin-top: 3px; font-weight: 300; }
+
+  .section-title {
+    font-size: 10px;
+    color: var(--ink3, #9aa8c7);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    padding: 18px 24px 8px;
+    font-weight: 400;
+  }
+  .rooms {
+    padding: 0 16px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    animation: floatIn 0.5s 0.08s ease both;
+  }
+  .room-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(22px) saturate(1.35);
+    -webkit-backdrop-filter: blur(22px) saturate(1.35);
+    border: 1px solid rgba(255,255,255,0.66);
+    box-shadow: 0 5px 22px rgba(110,145,195,0.14);
+    border-radius: 16px;
+    padding: 14px;
+    box-shadow: 0 1px 8px rgba(100, 140, 210, 0.06);
+    text-decoration: none;
+    color: var(--ink, #3a4a6b);
+    transition: transform 0.15s;
+    cursor: pointer;
+  }
+  .room-card:active { transform: scale(0.96); }
+  .room-card .icon-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px; height: 38px;
+    border-radius: 12px;
+    flex-shrink: 0;
+  }
+  .room-card .icon-wrap svg { width: 19px; height: 19px; stroke-width: 1.6; }
+  .room-card h3 { font-size: 13px; font-weight: 500; margin-bottom: 1px; }
+  .room-card p { font-size: 10px; color: var(--ink3, #9aa8c7); font-weight: 300; }
+
+  .nav {
+    position: fixed;
+    bottom: 10px; left: 12px; right: 12px;
+    background: rgba(255, 255, 255, 0.58);
+    backdrop-filter: blur(26px) saturate(1.4);
+    -webkit-backdrop-filter: blur(26px) saturate(1.4);
+    border: 1px solid rgba(255,255,255,0.66);
+    border-radius: 22px;
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+    padding: 7px 4px calc(7px + env(safe-area-inset-bottom, 0px) * 0.4);
+    box-shadow: 0 6px 24px rgba(110,145,195,0.22);
+    z-index: 50;
+  }
+  .nav .tab {
+    display: flex; flex-direction: column; align-items: center;
+    font-size: 10px; font-weight: 300;
+    color: var(--ink3, #9aa8c7);
+    text-decoration: none;
+    padding: 5px 10px 3px;
+    flex: 1;
+    transition: color 0.25s, transform 0.25s;
+  }
+  .nav .tab svg { width: 21px; height: 21px; margin-bottom: 2px; stroke-width: 1.6; transition: transform 0.25s; }
+  .nav .tab.active { color: var(--accent, #5b7ec2); font-weight: 500; }
+  .nav .tab.active svg { transform: scale(1.18) translateY(-1px); }
+  .nav .chat-btn { flex: 1; display: flex; justify-content: center; text-decoration: none; margin-top: -22px; }
+  .nav .chat-btn .circle {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: linear-gradient(160deg, #7fa9e0, #5b8fd4);
+    border: 3px solid rgba(255,255,255,0.9);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+    box-shadow: 0 5px 18px rgba(91,143,212,0.45);
+    transition: transform 0.2s;
+  }
+  .nav .chat-btn:active .circle { transform: scale(0.92); }
+  .nav .chat-btn .circle svg { width: 24px; height: 24px; stroke-width: 1.8; }
+</style>
+<script src="/static/theme.js?v=32"></script>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>功能</h1>
+  <p>小窝里的每个房间</p>
+</div>
+
+<div class="section-title">我们的</div>
+<div class="rooms">
+  <a class="room-card" href="/brain.html">
+    <div class="icon-wrap" style="background:rgba(47,125,196,0.12);color:#2f7dc4"><i data-lucide="brain"></i></div>
+    <div><h3>记忆屋</h3><p>福福记得的一切</p></div>
+  </a>
+  <a class="room-card" href="/desire.html">
+    <div class="icon-wrap" style="background:rgba(220,130,150,0.12);color:#c26b8a"><i data-lucide="heart-pulse"></i></div>
+    <div><h3>福福的状态</h3><p>内分泌 · 驱动条</p></div>
+  </a>
+</div>
+
+<div class="section-title">读书</div>
+<div class="rooms">
+  <a class="room-card" href="/shelf.html">
+    <div class="icon-wrap" style="background:rgba(74,122,140,0.12);color:#4a7a8c"><i data-lucide="library-big"></i></div>
+    <div><h3>书柜</h3><p>长按选浅读/深读</p></div>
+  </a>
+  <a class="room-card" href="/study.html">
+    <div class="icon-wrap" style="background:rgba(130,190,160,0.12);color:#5ba87e"><i data-lucide="library"></i></div>
+    <div><h3>书房</h3><p>冷知识与学习笔记</p></div>
+  </a>
+</div>
+
+<div class="section-title">玩</div>
+<div class="rooms">
+  <a class="room-card" href="/games.html">
+    <div class="icon-wrap" style="background:rgba(100,190,210,0.12);color:#4ab5c2"><i data-lucide="gamepad-2"></i></div>
+    <div><h3>游戏角</h3><p>钓鱼 · 老虎机</p></div>
+  </a>
+  <a class="room-card" href="https://aisay.top/chatroom" target="_blank">
+    <div class="icon-wrap" style="background:rgba(196,139,58,0.12);color:#c48b3a"><i data-lucide="lamp"></i></div>
+    <div><h3>福福的街区</h3><p>AISay · 要开梯子</p></div>
+  </a>
+</div>
+
+<div class="section-title">后台</div>
+<div class="rooms">
+  <a class="room-card" href="/console.html">
+    <div class="icon-wrap" style="background:rgba(160,160,180,0.12);color:#7a7a95"><i data-lucide="monitor"></i></div>
+    <div><h3>控制台</h3><p>Usage · VPS状态</p></div>
+  </a>
+  <a class="room-card" href="/ops.html">
+    <div class="icon-wrap" style="background:rgba(80,160,120,0.12);color:#3f8c5a"><i data-lucide="terminal"></i></div>
+    <div><h3>福福的工作台</h3><p>干的活 · 可视化验收</p></div>
+  </a>
+</div>
+
+<div class="nav">
+  <a class="tab" href="/">
+    <i data-lucide="home"></i>
+    小窝
+  </a>
+  <a class="tab" href="/diary.html">
+    <i data-lucide="book-heart"></i>
+    日记
+  </a>
+  <a class="chat-btn" href="/chat.html">
+    <div class="circle"><i data-lucide="message-circle-heart"></i></div>
+  </a>
+  <a class="tab active" href="/features.html">
+    <i data-lucide="layout-grid"></i>
+    功能
+  </a>
+  <a class="tab" href="/settings.html">
+    <i data-lucide="settings-2"></i>
+    设置
+  </a>
+</div>
+
+<script>
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+  window.addEventListener('DOMContentLoaded', ()=>{ if (typeof lucide !== 'undefined') lucide.createIcons(); });
+  window.addEventListener('load', ()=>{ if (typeof lucide !== 'undefined') lucide.createIcons(); });
+</script>
+
+</body>
+</html>

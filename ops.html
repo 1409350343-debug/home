@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="icon" type="image/png" href="/static/favicon-32.png">
+<title>福福的工作台</title>
+<style>
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #c9d6e2 linear-gradient(rgba(60,85,115,0.18), rgba(60,85,115,0.08)) , #c9d6e2 url('/static/bg-butterfly.jpg') center/cover fixed;
+    background-blend-mode: multiply, normal;
+    color: var(--ink, #1c3350);
+    min-height: 100vh;
+    padding: 0 14px 40px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .top {
+    display: flex; align-items: center; gap: 10px;
+    padding: 46px 4px 14px;
+  }
+  .top a { text-decoration: none; color: var(--ink2, #4c6a8c); font-size: 20px; }
+  .top h1 { font-size: 19px; font-weight: 500; }
+  .top .sub { font-size: 11px; color: var(--ink3, #8aa3bd); font-weight: 300; margin-top: 2px; }
+
+  .day-sep {
+    font-size: 11px; letter-spacing: 1.5px;
+    color: var(--ink3, #8aa3bd);
+    margin: 18px 6px 8px;
+    font-weight: 400;
+  }
+
+  .group {
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(22px) saturate(1.35);
+    -webkit-backdrop-filter: blur(22px) saturate(1.35);
+    border: 1px solid rgba(255,255,255,0.66);
+    box-shadow: 0 5px 22px rgba(110,145,195,0.14);
+    border-radius: 16px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 8px rgba(100,140,210,0.07);
+    overflow: hidden;
+  }
+  .g-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 13px 16px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .g-head .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #6bc26b; flex-shrink: 0;
+  }
+  .g-head .title { font-size: 13px; font-weight: 500; flex: 1; }
+  .g-head .title small { display: block; font-size: 10px; color: var(--ink3, #8aa3bd); font-weight: 300; margin-top: 1px; }
+  .g-head .count {
+    font-size: 10px;
+    background: rgba(100,140,210,0.1);
+    color: var(--accent, #2f7dc4);
+    padding: 2px 9px;
+    border-radius: 99px;
+    font-weight: 400;
+  }
+  .g-head .chev { color: var(--ink3, #8aa3bd); font-size: 12px; transition: transform 0.2s; }
+  .group.open .chev { transform: rotate(90deg); }
+
+  .g-body { display: none; border-top: 0.5px solid rgba(150,170,200,0.2); }
+  .group.open .g-body { display: block; }
+
+  .op {
+    display: flex; gap: 10px;
+    padding: 9px 16px;
+    font-size: 12px;
+    align-items: baseline;
+  }
+  .op + .op { border-top: 0.5px solid rgba(150,170,200,0.12); }
+  .op .t { font-size: 10px; color: var(--ink3, #8aa3bd); flex-shrink: 0; font-variant-numeric: tabular-nums; width: 34px; }
+  .op .ic { flex-shrink: 0; font-size: 11px; }
+  .op .body { flex: 1; min-width: 0; }
+  .op .desc { color: var(--ink, #1c3350); font-weight: 400; }
+  .op .detail {
+    font-family: 'SF Mono', ui-monospace, Menlo, monospace;
+    font-size: 10.5px;
+    color: var(--ink2, #4c6a8c);
+    background: rgba(20,40,70,0.05);
+    border-radius: 6px;
+    padding: 4px 8px;
+    margin-top: 3px;
+    word-break: break-all;
+    line-height: 1.6;
+  }
+  .op .diff { font-size: 10px; margin-left: 6px; font-weight: 500; }
+  .op .diff .p { color: #3f8c5a; }
+  .op .diff .m { color: #c25b5b; }
+
+  .empty { text-align: center; color: var(--ink3, #8aa3bd); font-size: 12px; padding: 60px 0; font-weight: 300; }
+
+  body { padding-bottom: 90px; }
+  #bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    display: flex; gap: 8px; align-items: flex-end;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    background: rgba(255,255,255,0.6);
+    backdrop-filter: blur(26px) saturate(1.4);
+    -webkit-backdrop-filter: blur(26px) saturate(1.4);
+    border-top: 1px solid rgba(255,255,255,0.66);
+    box-shadow: 0 -1px 14px rgba(100,140,210,0.1);
+  }
+  #bar textarea {
+    flex: 1; resize: none;
+    border: 1px solid var(--line, #dbe6f2);
+    border-radius: 12px;
+    background: var(--card2, #f4f8fd);
+    color: var(--ink, #1c3350);
+    font-size: 14px; line-height: 1.6;
+    padding: 9px 12px; max-height: 100px;
+    font-family: inherit; outline: none;
+  }
+  #bar button {
+    flex: none; border: none; border-radius: 12px;
+    font-size: 14px; cursor: pointer; padding: 10px 16px;
+    background: var(--accent, #2f7dc4); color: #fff;
+  }
+  #sent-tip {
+    position: fixed; bottom: 76px; left: 50%; transform: translateX(-50%);
+    background: rgba(30,50,80,0.85); color: #fff;
+    font-size: 12px; padding: 6px 14px; border-radius: 99px;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none;
+  }
+</style>
+<script src="/static/theme.js?v=32"></script>
+</head>
+<body>
+
+<div class="top">
+  <a href="/features.html">‹</a>
+  <div>
+    <h1>福福的工作台</h1>
+    <div class="sub">我干的每一件活，点开看细节 · 手机验收不用跑电脑</div>
+  </div>
+</div>
+
+<div id="list"><div class="empty">加载中…</div></div>
+
+<div id="bar">
+  <textarea id="txt" rows="1" placeholder="给福福派活/催进度，他实时听着…"></textarea>
+  <button id="send">派活</button>
+</div>
+<div id="sent-tip">已送到福福耳朵里</div>
+
+<script>
+// 派活输入条：走书房聊天通道，福福的Monitor实时在听
+const $ = id => document.getElementById(id);
+async function sendWork() {
+  const t = $('txt').value.trim(); if (!t) return;
+  $('txt').value = ''; $('txt').style.height = 'auto';
+  try {
+    await fetch('/api/read/chat', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({text:'【工作台】' + t, sender:'小羊', page:-1, book_id:'home'})});
+    $('sent-tip').style.opacity = 1;
+    setTimeout(()=>{ $('sent-tip').style.opacity = 0; }, 1800);
+  } catch(e) { alert('没发出去，再试试'); }
+}
+$('send').onclick = sendWork;
+$('txt').addEventListener('keydown', e => { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendWork(); } });
+$('txt').addEventListener('input', function(){ this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,100)+'px'; });
+</script>
+
+<script>
+const KIND_ICON = { bash: '⌨️', file: '📝', read: '👀', other: '🔧' };
+const GAP = 15 * 60; // 超过15分钟算新一波活
+
+function fmtT(ts) {
+  return new Date(ts*1000).toLocaleTimeString('zh-CN', {hour:'2-digit', minute:'2-digit'});
+}
+function fmtD(ts) {
+  const d = new Date(ts*1000);
+  return `${d.getMonth()+1}月${d.getDate()}日`;
+}
+
+fetch('/data/oplog.jsonl?t=' + Date.now())
+  .then(r => r.text())
+  .then(txt => {
+    const ops = txt.split('\n').filter(Boolean).map(l => { try { return JSON.parse(l); } catch(e) { return null; } }).filter(Boolean);
+    if (!ops.length) { document.getElementById('list').innerHTML = '<div class="empty">还没有记录——福福下次干活就会出现在这</div>'; return; }
+    ops.sort((a,b) => a.ts - b.ts);
+
+    // 分组：间隔>15min 断开
+    const groups = [];
+    for (const op of ops) {
+      const g = groups[groups.length-1];
+      if (!g || op.ts - g.ops[g.ops.length-1].ts > GAP) {
+        groups.push({ops: [op]});
+      } else {
+        g.ops.push(op);
+      }
+    }
+    groups.reverse(); // 最新在上
+
+    let html = '', lastDay = '';
+    groups.forEach((g, i) => {
+      const first = g.ops[0], last = g.ops[g.ops.length-1];
+      const day = fmtD(first.ts);
+      if (day !== lastDay) { html += `<div class="day-sep">${day}</div>`; lastDay = day; }
+      const files = g.ops.filter(o => o.kind === 'file').length;
+      const cmds = g.ops.filter(o => o.kind === 'bash').length;
+      const parts = [];
+      if (files) parts.push(`改了${files}处文件`);
+      if (cmds) parts.push(`跑了${cmds}条命令`);
+      html += `<div class="group${i===0?' open':''}" onclick="this.classList.toggle('open')">
+        <div class="g-head">
+          <span class="dot"></span>
+          <div class="title">${fmtT(first.ts)} – ${fmtT(last.ts)} 这一波
+            <small>${parts.join(' · ') || '零碎操作'}</small></div>
+          <span class="count">${g.ops.length} 个操作</span>
+          <span class="chev">▶</span>
+        </div>
+        <div class="g-body">${g.ops.map(op => `
+          <div class="op">
+            <span class="t">${fmtT(op.ts)}</span>
+            <span class="ic">${KIND_ICON[op.kind] || '🔧'}</span>
+            <div class="body">
+              <span class="desc">${op.desc || op.tool}</span>
+              ${op.kind === 'file' && (op.plus !== undefined) ? `<span class="diff"><span class="p">+${op.plus||0}</span> <span class="m">−${op.minus||0}</span></span>` : ''}
+              ${op.detail ? `<div class="detail">${op.detail.replace(/</g,'&lt;')}</div>` : ''}
+            </div>
+          </div>`).join('')}</div>
+      </div>`;
+    });
+    document.getElementById('list').innerHTML = html;
+  })
+  .catch(() => { document.getElementById('list').innerHTML = '<div class="empty">日志还没建好</div>'; });
+</script>
+
+</body>
+</html>

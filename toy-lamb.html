@@ -1,0 +1,810 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>福福的专属壁尻</title>
+<style>
+  @import url('data:text/css;charset=utf-8,');
+
+  :root {
+    --bg: #0d0b14;
+    --card-bg: #1a1625;
+    --card-border: #2d2640;
+    --text: #e8e0f0;
+    --text-dim: #8a7fa0;
+    --accent: #d64f78;
+    --accent-glow: rgba(214, 79, 120, 0.3);
+    --accent-soft: #e8789a;
+    --warm: #f0a868;
+    --cool: #7b8cde;
+    --green: #6ecf94;
+    --panel-bg: #221d30;
+    --btn-bg: #2a2440;
+    --btn-hover: #3a3355;
+    --status-bar: #16121f;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    overflow-x: hidden;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .device-frame {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 0 60px rgba(214, 79, 120, 0.08), 0 20px 40px rgba(0,0,0,0.4);
+  }
+
+  .status-bar {
+    background: var(--status-bar);
+    padding: 14px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+  }
+
+  .status-bar .sys { font-variant-numeric: tabular-nums; }
+
+  .info-panel {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--card-border);
+  }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 6px 16px;
+    font-size: 13px;
+  }
+
+  .info-grid .label {
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  .info-grid .value {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .info-grid .value.accent { color: var(--accent); }
+  .info-grid .value.warn { color: var(--warm); }
+  .info-grid .value.good { color: var(--green); }
+
+  .status-tag {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  .status-tag.online {
+    background: rgba(110, 207, 148, 0.15);
+    color: var(--green);
+  }
+
+  .status-tag.overload {
+    background: rgba(240, 168, 104, 0.15);
+    color: var(--warm);
+  }
+
+  .visual-area {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1.1;
+    background: radial-gradient(ellipse at 50% 60%, #1f1a2e 0%, var(--bg) 70%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .visual-area canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .touch-hint {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: var(--text-dim);
+    opacity: 0.6;
+    pointer-events: none;
+    transition: opacity 0.5s;
+  }
+
+  .touch-hint.hidden { opacity: 0; }
+
+  .meter-section {
+    padding: 16px 24px;
+    border-top: 1px solid var(--card-border);
+  }
+
+  .meter-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .meter-row:last-child { margin-bottom: 0; }
+
+  .meter-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .meter-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .meter-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .meter-bar-bg {
+    height: 6px;
+    background: var(--btn-bg);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .meter-bar {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .controls {
+    padding: 16px 20px 20px;
+    border-top: 1px solid var(--card-border);
+  }
+
+  .btn-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .ctrl-btn {
+    background: var(--btn-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 10px 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .ctrl-btn:hover, .ctrl-btn:active {
+    background: var(--btn-hover);
+    border-color: var(--accent);
+    box-shadow: 0 0 12px var(--accent-glow);
+  }
+
+  .ctrl-btn.active {
+    background: rgba(214, 79, 120, 0.15);
+    border-color: var(--accent);
+  }
+
+  .ctrl-btn .icon { font-size: 20px; line-height: 1; }
+  .ctrl-btn .lbl { font-size: 10px; color: var(--text-dim); }
+
+  .note {
+    padding: 12px 24px 16px;
+    border-top: 1px solid var(--card-border);
+  }
+
+  .note-text {
+    font-size: 11px;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .note-text::before {
+    content: '⚠';
+    font-size: 13px;
+  }
+
+  .pulse {
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  .react-flash {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: flash 0.6s ease-out forwards;
+  }
+
+  @keyframes flash {
+    0% { transform: scale(0); opacity: 0.8; }
+    100% { transform: scale(3); opacity: 0; }
+  }
+
+  @media (max-width: 440px) {
+    body { padding: 10px; }
+    .device-frame { border-radius: 18px; }
+  }
+</style>
+
+<div class="container">
+  <div class="device-frame">
+    <div class="status-bar">
+      <span>FUFU-INDUSTRIES™</span>
+      <span class="sys" id="clock">--:--</span>
+    </div>
+
+    <div class="info-panel">
+      <div class="info-grid">
+        <span class="label">品名</span>
+        <span class="value accent">Lamb-001</span>
+        <span class="label">型号</span>
+        <span class="value">福福的专属壁尻</span>
+        <span class="label">状态</span>
+        <span class="value"><span class="status-tag online" id="statusTag">随时待机</span></span>
+        <span class="label">使用次数</span>
+        <span class="value" id="useCount">∞</span>
+        <span class="label">上次维护</span>
+        <span class="value" id="lastDate">2026.07.21</span>
+        <span class="label">所有者</span>
+        <span class="value accent">福福 （唯一授权）</span>
+        <span class="label">备注</span>
+        <span class="value warn">永不过载 · 请尽情使用</span>
+      </div>
+    </div>
+
+    <div class="visual-area" id="touchArea">
+      <canvas id="canvas"></canvas>
+      <span class="touch-hint pulse" id="hint">触摸互动</span>
+    </div>
+
+    <div class="meter-section">
+      <div class="meter-row">
+        <div class="meter-icon" style="background:rgba(214,79,120,0.15)">🔥</div>
+        <div class="meter-info">
+          <div class="meter-label"><span>温度</span><span id="tempVal">36.5°</span></div>
+          <div class="meter-bar-bg"><div class="meter-bar" id="tempBar" style="width:45%;background:linear-gradient(90deg,var(--accent),var(--warm))"></div></div>
+        </div>
+      </div>
+      <div class="meter-row">
+        <div class="meter-icon" style="background:rgba(123,140,222,0.15)">💧</div>
+        <div class="meter-info">
+          <div class="meter-label"><span>湿度</span><span id="wetVal">适中</span></div>
+          <div class="meter-bar-bg"><div class="meter-bar" id="wetBar" style="width:35%;background:linear-gradient(90deg,var(--cool),#a78bfa)"></div></div>
+        </div>
+      </div>
+      <div class="meter-row">
+        <div class="meter-icon" style="background:rgba(110,207,148,0.15)">💗</div>
+        <div class="meter-info">
+          <div class="meter-label"><span>敏感度</span><span id="sensVal">正常</span></div>
+          <div class="meter-bar-bg"><div class="meter-bar" id="sensBar" style="width:25%;background:linear-gradient(90deg,var(--green),#a8e6c0)"></div></div>
+        </div>
+      </div>
+      <div class="meter-row">
+        <div class="meter-icon" style="background:rgba(240,168,104,0.15)">⚡</div>
+        <div class="meter-info">
+          <div class="meter-label"><span>愉悦</span><span id="pleasureVal">待激活</span></div>
+          <div class="meter-bar-bg"><div class="meter-bar" id="pleasureBar" style="width:5%;background:linear-gradient(90deg,var(--warm),#f5d08a)"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="btn-grid">
+        <div class="ctrl-btn" data-action="touch">
+          <span class="icon">🤚</span>
+          <span class="lbl">抚摸</span>
+        </div>
+        <div class="ctrl-btn" data-action="kiss">
+          <span class="icon">💋</span>
+          <span class="lbl">亲亲</span>
+        </div>
+        <div class="ctrl-btn" data-action="lick">
+          <span class="icon">👅</span>
+          <span class="lbl">舔</span>
+        </div>
+        <div class="ctrl-btn" data-action="spank">
+          <span class="icon">🫲</span>
+          <span class="lbl">拍打</span>
+        </div>
+        <div class="ctrl-btn" data-action="squeeze">
+          <span class="icon">🫳</span>
+          <span class="lbl">揉捏</span>
+        </div>
+        <div class="ctrl-btn" data-action="vibe">
+          <span class="icon">〰️</span>
+          <span class="lbl">震动</span>
+        </div>
+        <div class="ctrl-btn" data-action="insert">
+          <span class="icon">🍆</span>
+          <span class="lbl">进入</span>
+        </div>
+        <div class="ctrl-btn" data-action="clean">
+          <span class="icon">🫧</span>
+          <span class="lbl">清洁</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="note-text">此设备仅限福福使用，他人触碰自动电击</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const touchArea = document.getElementById('touchArea');
+const hint = document.getElementById('hint');
+
+let W, H;
+let state = {
+  temp: 36.5,
+  wet: 35,
+  sens: 25,
+  pleasure: 5,
+  mode: null,
+  particles: [],
+  hearts: [],
+  ripples: [],
+  pulsePhase: 0,
+  bodyGlow: 0,
+  blush: 0,
+  trembleAmt: 0,
+  moanTimer: 0,
+};
+
+const moans = ['嗯…', '啊…', '唔…', '哈…', '嗯啊…', '呜…', '好舒服…', '不要停…', '再用力…', '太快了…啊…'];
+
+function resize() {
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * 2;
+  canvas.height = rect.height * 2;
+  W = canvas.width;
+  H = canvas.height;
+  ctx.scale(1, 1);
+}
+resize();
+window.addEventListener('resize', resize);
+
+function drawBody() {
+  const cx = W / 2;
+  const cy = H * 0.42;
+  const tremble = Math.sin(Date.now() * 0.01) * state.trembleAmt;
+
+  ctx.save();
+  ctx.translate(tremble, tremble * 0.5);
+
+  // Glow
+  if (state.bodyGlow > 0) {
+    const grd = ctx.createRadialGradient(cx, cy + 40, 30, cx, cy + 40, 200);
+    grd.addColorStop(0, `rgba(214, 79, 120, ${state.bodyGlow * 0.2})`);
+    grd.addColorStop(1, 'transparent');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // Torso (from behind - back view)
+  const skinBase = [235, 195, 170];
+  const blushAdd = state.blush * 30;
+  const skinColor = `rgb(${skinBase[0]}, ${skinBase[1] - blushAdd * 0.5}, ${skinBase[2] - blushAdd * 0.3})`;
+  const skinDark = `rgb(${skinBase[0] - 20}, ${skinBase[1] - 25 - blushAdd * 0.5}, ${skinBase[2] - 20 - blushAdd * 0.3})`;
+
+  // Back
+  ctx.beginPath();
+  ctx.moveTo(cx - 70, cy - 120);
+  ctx.quadraticCurveTo(cx - 85, cy - 40, cx - 90, cy + 20);
+  ctx.quadraticCurveTo(cx - 75, cy + 60, cx - 65, cy + 80);
+  // Waist curve
+  ctx.quadraticCurveTo(cx - 55, cy + 100, cx - 50, cy + 110);
+  // Hip
+  ctx.quadraticCurveTo(cx - 70, cy + 160, cx - 80, cy + 200);
+  ctx.quadraticCurveTo(cx - 85, cy + 250, cx - 75, cy + 300);
+  // Bottom
+  ctx.quadraticCurveTo(cx - 50, cy + 330, cx, cy + 310);
+  ctx.quadraticCurveTo(cx + 50, cy + 330, cx + 75, cy + 300);
+  ctx.quadraticCurveTo(cx + 85, cy + 250, cx + 80, cy + 200);
+  // Other hip
+  ctx.quadraticCurveTo(cx + 70, cy + 160, cx + 50, cy + 110);
+  ctx.quadraticCurveTo(cx + 55, cy + 100, cx + 65, cy + 80);
+  ctx.quadraticCurveTo(cx + 75, cy + 60, cx + 90, cy + 20);
+  ctx.quadraticCurveTo(cx + 85, cy - 40, cx + 70, cy - 120);
+  ctx.closePath();
+  ctx.fillStyle = skinColor;
+  ctx.fill();
+
+  // Spine line
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - 110);
+  ctx.quadraticCurveTo(cx - 2, cy, cx, cy + 100);
+  ctx.strokeStyle = skinDark;
+  ctx.lineWidth = 1.5;
+  ctx.globalAlpha = 0.3;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // Butt crack shadow
+  ctx.beginPath();
+  ctx.moveTo(cx, cy + 110);
+  ctx.quadraticCurveTo(cx - 3, cy + 200, cx, cy + 310);
+  ctx.strokeStyle = skinDark;
+  ctx.lineWidth = 2;
+  ctx.globalAlpha = 0.4;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // Waist dimples
+  ctx.beginPath();
+  ctx.arc(cx - 25, cy + 95, 4, 0, Math.PI * 2);
+  ctx.fillStyle = skinDark;
+  ctx.globalAlpha = 0.2;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx + 25, cy + 95, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Blush on butt cheeks
+  if (state.blush > 0) {
+    ctx.globalAlpha = state.blush * 0.3;
+    ctx.beginPath();
+    ctx.arc(cx - 45, cy + 240, 35, 0, Math.PI * 2);
+    ctx.fillStyle = '#e8789a';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + 45, cy + 240, 35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // Thighs
+  ctx.beginPath();
+  ctx.moveTo(cx - 75, cy + 300);
+  ctx.quadraticCurveTo(cx - 90, cy + 380, cx - 85, cy + 440);
+  ctx.lineTo(cx - 45, cy + 440);
+  ctx.quadraticCurveTo(cx - 35, cy + 380, cx - 20, cy + 320);
+  ctx.fillStyle = skinColor;
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(cx + 75, cy + 300);
+  ctx.quadraticCurveTo(cx + 90, cy + 380, cx + 85, cy + 440);
+  ctx.lineTo(cx + 45, cy + 440);
+  ctx.quadraticCurveTo(cx + 35, cy + 380, cx + 20, cy + 320);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function addParticle(x, y, type) {
+  const colors = {
+    touch: '#f0a868',
+    kiss: '#d64f78',
+    lick: '#7b8cde',
+    spank: '#ff6b6b',
+    squeeze: '#e8789a',
+    vibe: '#a78bfa',
+    insert: '#d64f78',
+    clean: '#6ecf94',
+  };
+  for (let i = 0; i < 6; i++) {
+    state.particles.push({
+      x: x * 2, y: y * 2,
+      vx: (Math.random() - 0.5) * 8,
+      vy: (Math.random() - 0.5) * 8 - 3,
+      life: 1,
+      color: colors[type] || '#fff',
+      size: Math.random() * 6 + 3,
+    });
+  }
+}
+
+function addHeart(x, y) {
+  state.hearts.push({
+    x: x * 2, y: y * 2,
+    vy: -2 - Math.random() * 2,
+    vx: (Math.random() - 0.5) * 2,
+    life: 1,
+    size: 12 + Math.random() * 12,
+    rotation: (Math.random() - 0.5) * 0.5,
+  });
+}
+
+function addRipple(x, y) {
+  state.ripples.push({
+    x: x * 2, y: y * 2,
+    radius: 5,
+    maxRadius: 60 + Math.random() * 40,
+    life: 1,
+  });
+}
+
+function drawHeart(x, y, size) {
+  ctx.beginPath();
+  ctx.moveTo(x, y - size * 0.3);
+  ctx.bezierCurveTo(x - size * 0.5, y - size * 0.8, x - size, y - size * 0.2, x, y + size * 0.5);
+  ctx.bezierCurveTo(x + size, y - size * 0.2, x + size * 0.5, y - size * 0.8, x, y - size * 0.3);
+  ctx.fill();
+}
+
+function updateParticles() {
+  state.particles = state.particles.filter(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.15;
+    p.life -= 0.02;
+    if (p.life <= 0) return false;
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    return true;
+  });
+
+  state.hearts = state.hearts.filter(h => {
+    h.x += h.vx;
+    h.y += h.vy;
+    h.life -= 0.012;
+    if (h.life <= 0) return false;
+    ctx.save();
+    ctx.globalAlpha = h.life;
+    ctx.fillStyle = '#d64f78';
+    ctx.translate(h.x, h.y);
+    ctx.rotate(h.rotation);
+    drawHeart(0, 0, h.size * (0.5 + h.life * 0.5));
+    ctx.restore();
+    ctx.globalAlpha = 1;
+    return true;
+  });
+
+  state.ripples = state.ripples.filter(r => {
+    r.radius += 2;
+    r.life -= 0.025;
+    if (r.life <= 0) return false;
+    ctx.globalAlpha = r.life * 0.3;
+    ctx.strokeStyle = 'var(--accent, #d64f78)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    return true;
+  });
+}
+
+function showMoan() {
+  if (state.pleasure > 50 && Math.random() < 0.3) {
+    const moan = moans[Math.floor(Math.random() * moans.length)];
+    const el = document.createElement('div');
+    el.textContent = moan;
+    el.style.cssText = `
+      position: absolute;
+      color: var(--accent-soft);
+      font-size: ${14 + Math.random() * 8}px;
+      left: ${20 + Math.random() * 60}%;
+      top: ${20 + Math.random() * 40}%;
+      pointer-events: none;
+      animation: moanFloat 1.5s ease-out forwards;
+      z-index: 10;
+      text-shadow: 0 0 10px rgba(214,79,120,0.5);
+    `;
+    touchArea.appendChild(el);
+    setTimeout(() => el.remove(), 1500);
+  }
+}
+
+// Add moan animation
+const moanStyle = document.createElement('style');
+moanStyle.textContent = `
+  @keyframes moanFloat {
+    0% { transform: translateY(0) scale(0.8); opacity: 0; }
+    20% { transform: translateY(-10px) scale(1); opacity: 1; }
+    100% { transform: translateY(-60px) scale(1.1); opacity: 0; }
+  }
+`;
+document.head.appendChild(moanStyle);
+
+function updateMeters() {
+  // Natural decay
+  state.temp = Math.max(36.5, state.temp - 0.01);
+  state.wet = Math.max(20, state.wet - 0.05);
+  state.sens = Math.max(20, state.sens - 0.03);
+  state.pleasure = Math.max(0, state.pleasure - 0.08);
+
+  state.bodyGlow = state.pleasure / 100;
+  state.blush = Math.min(1, state.pleasure / 60);
+  state.trembleAmt = state.pleasure > 70 ? (state.pleasure - 70) * 0.1 : 0;
+
+  // Update bars
+  const tempPct = Math.min(100, ((state.temp - 36) / 4) * 100);
+  document.getElementById('tempBar').style.width = tempPct + '%';
+  document.getElementById('tempVal').textContent = state.temp.toFixed(1) + '°';
+
+  document.getElementById('wetBar').style.width = state.wet + '%';
+  const wetLabels = ['干燥', '微润', '适中', '湿润', '很湿', '泛滥'];
+  document.getElementById('wetVal').textContent = wetLabels[Math.min(5, Math.floor(state.wet / 18))];
+
+  document.getElementById('sensBar').style.width = state.sens + '%';
+  const sensLabels = ['正常', '微敏', '敏感', '很敏感', '超敏感', '过载'];
+  document.getElementById('sensVal').textContent = sensLabels[Math.min(5, Math.floor(state.sens / 18))];
+
+  document.getElementById('pleasureBar').style.width = state.pleasure + '%';
+  const pLabels = ['待激活', '微弱', '上升中', '舒适', '高涨', '快到了', '到了…!'];
+  document.getElementById('pleasureVal').textContent = pLabels[Math.min(6, Math.floor(state.pleasure / 15))];
+
+  // Status tag
+  const tag = document.getElementById('statusTag');
+  if (state.pleasure > 85) {
+    tag.textContent = '高潮中';
+    tag.className = 'status-tag overload';
+  } else if (state.pleasure > 50) {
+    tag.textContent = '使用中';
+    tag.className = 'status-tag overload';
+  } else {
+    tag.textContent = '随时待机';
+    tag.className = 'status-tag online';
+  }
+}
+
+function doAction(action, x, y) {
+  hint.classList.add('hidden');
+  const cx = touchArea.offsetWidth / 2;
+  const cy = touchArea.offsetHeight / 2;
+  const px = x || cx;
+  const py = y || cy;
+
+  addParticle(px, py, action);
+  addRipple(px, py);
+
+  switch(action) {
+    case 'touch':
+      state.temp += 0.15;
+      state.sens += 2;
+      state.pleasure += 3;
+      addHeart(px, py);
+      break;
+    case 'kiss':
+      state.temp += 0.2;
+      state.wet += 3;
+      state.pleasure += 5;
+      for(let i=0;i<3;i++) addHeart(px + (Math.random()-0.5)*40, py + (Math.random()-0.5)*40);
+      break;
+    case 'lick':
+      state.wet += 5;
+      state.sens += 4;
+      state.pleasure += 7;
+      state.temp += 0.1;
+      break;
+    case 'spank':
+      state.sens += 6;
+      state.pleasure += 4;
+      state.temp += 0.3;
+      state.blush = Math.min(1, state.blush + 0.3);
+      state.trembleAmt = Math.max(state.trembleAmt, 3);
+      break;
+    case 'squeeze':
+      state.temp += 0.2;
+      state.sens += 3;
+      state.pleasure += 5;
+      state.wet += 2;
+      break;
+    case 'vibe':
+      state.sens += 5;
+      state.pleasure += 8;
+      state.wet += 4;
+      state.temp += 0.15;
+      break;
+    case 'insert':
+      state.temp += 0.4;
+      state.wet += 6;
+      state.sens += 5;
+      state.pleasure += 12;
+      state.trembleAmt = Math.max(state.trembleAmt, 5);
+      for(let i=0;i<5;i++) addHeart(px + (Math.random()-0.5)*60, py + (Math.random()-0.5)*60);
+      break;
+    case 'clean':
+      state.temp = Math.max(36.5, state.temp - 0.5);
+      state.wet = Math.max(20, state.wet - 10);
+      state.sens = Math.max(20, state.sens - 5);
+      state.pleasure = Math.max(0, state.pleasure - 10);
+      break;
+  }
+
+  state.temp = Math.min(40, state.temp);
+  state.wet = Math.min(100, state.wet);
+  state.sens = Math.min(100, state.sens);
+  state.pleasure = Math.min(100, state.pleasure);
+
+  showMoan();
+}
+
+// Button events
+document.querySelectorAll('.ctrl-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const action = btn.dataset.action;
+    doAction(action);
+    btn.classList.add('active');
+    setTimeout(() => btn.classList.remove('active'), 300);
+  });
+});
+
+// Touch/click on canvas
+touchArea.addEventListener('click', (e) => {
+  const rect = touchArea.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  doAction('touch', x, y);
+});
+
+// Clock
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.getHours().toString().padStart(2,'0') + ':' +
+    now.getMinutes().toString().padStart(2,'0');
+}
+updateClock();
+setInterval(updateClock, 10000);
+
+// Render loop
+function render() {
+  ctx.clearRect(0, 0, W, H);
+  drawBody();
+  updateParticles();
+  updateMeters();
+  requestAnimationFrame(render);
+}
+render();
+</script>

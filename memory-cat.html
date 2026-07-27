@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<link rel="icon" type="image/png" href="/static/favicon-32.png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="var(--bg, #e8f0fe)">
+<title>记忆角 · Our Home</title>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg, var(--bg, #e8f0fe)) var(--bg-img, url('/static/bg.jpg')) center/cover fixed;
+    min-height: 100vh;
+    color: var(--ink, #3a4a6b);
+    padding-bottom: 30px;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px 12px;
+    gap: 12px;
+  }
+
+  .back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: rgba(255,255,255,0.6);
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    color: var(--accent, #5b7ec2);
+  }
+
+  .header-info { flex: 1; }
+  .header-info h1 { font-size: 20px; font-weight: 600; }
+  .header-info p { font-size: 12px; color: var(--ink3, #9aa8c7); margin-top: 1px; }
+
+  .header .count-badge {
+    font-size: 12px;
+    color: var(--ink3, #9aa8c7);
+    background: rgba(255,255,255,0.5);
+    padding: 4px 12px;
+    border-radius: 12px;
+  }
+
+  .memory-list {
+    padding: 0 16px;
+  }
+
+  .memory-card {
+    background: rgba(255,255,255,0.75);
+    backdrop-filter: blur(20px);
+    border-radius: 14px;
+    margin-bottom: 8px;
+    border: 1px solid rgba(255,255,255,0.9);
+    box-shadow: 0 2px 8px rgba(100,140,210,0.06);
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: transform 0.12s;
+    position: relative;
+  }
+
+  .memory-card:active {
+    transform: scale(0.98);
+  }
+
+  .memory-card .top-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .memory-card .importance {
+    font-size: 10px;
+    color: var(--ink3, #9aa8c7);
+    background: rgba(100,140,210,0.08);
+    padding: 1px 7px;
+    border-radius: 6px;
+  }
+
+  .memory-card .importance.high { color: #c26b8a; background: rgba(220,130,150,0.12); }
+
+  .memory-card .pin { font-size: 10px; }
+
+  .memory-card .type-badge {
+    font-size: 10px;
+    color: #7a9ad0;
+    margin-left: auto;
+  }
+
+  .memory-card .preview {
+    font-size: 13px;
+    line-height: 1.6;
+    color: #4a5a7b;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .memory-card .tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+
+  .memory-card .tag {
+    font-size: 10px;
+    color: #8a9ec7;
+    background: rgba(100,140,210,0.08);
+    padding: 2px 8px;
+    border-radius: 6px;
+  }
+
+  /* Detail modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.3);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    justify-content: center;
+    align-items: flex-end;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: #fff;
+    border-radius: 20px 20px 0 0;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 24px 20px;
+    animation: slideUp 0.25s ease-out;
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  .modal-handle {
+    width: 36px;
+    height: 4px;
+    background: #ddd;
+    border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+
+  .modal-content {
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--ink, #3a4a6b);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .modal-tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+
+  .modal-tag {
+    font-size: 11px;
+    background: rgba(100,140,210,0.1);
+    color: var(--accent, #5b7ec2);
+    padding: 3px 10px;
+    border-radius: 8px;
+  }
+
+  .modal-meta {
+    margin-top: 12px;
+    font-size: 11px;
+    color: var(--line, #b0bdd4);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--line, #b0bdd4);
+    font-size: 14px;
+  }
+
+  .modal-cat-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(100,140,210,0.1);
+  }
+
+  .modal-cat-row label {
+    font-size: 12px;
+    color: var(--ink3, #9aa8c7);
+    flex-shrink: 0;
+  }
+
+  .modal-cat-row select {
+    flex: 1;
+    padding: 6px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(100,140,210,0.2);
+    background: rgba(100,140,210,0.05);
+    font-size: 13px;
+    color: var(--ink, #3a4a6b);
+    outline: none;
+  }
+
+  .modal-cat-row .save-btn {
+    padding: 6px 14px;
+    border-radius: 10px;
+    border: none;
+    background: var(--accent, #5b7ec2);
+    color: #fff;
+    font-size: 12px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .modal-cat-row .save-btn:active { opacity: 0.8; }
+
+  .modal-cat-row .save-btn.saved {
+    background: #6abf8a;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .delete-btn {
+    padding: 8px 0;
+    border-radius: 10px;
+    border: 1px solid rgba(210,80,80,0.3);
+    background: rgba(210,80,80,0.06);
+    color: #c25b5b;
+    font-size: 13px;
+    cursor: pointer;
+    flex: 1;
+  }
+
+  .delete-btn:active { opacity: 0.7; }
+</style>
+<script src="/static/theme.js?v=32"></script>
+</head>
+<body>
+
+<div class="header">
+  <button class="back-btn" onclick="location.href='/memory.html'">
+    <i data-lucide="chevron-left"></i>
+  </button>
+  <div class="header-info">
+    <h1 id="catName">-</h1>
+    <p id="catDesc"></p>
+  </div>
+  <div class="count-badge" id="catCount">-</div>
+</div>
+
+<div class="memory-list" id="memoryList"></div>
+
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-content" id="modalContent"></div>
+    <div class="modal-tags" id="modalTags"></div>
+    <div class="modal-meta" id="modalMeta"></div>
+    <div class="modal-cat-row">
+      <label>分类:</label>
+      <select id="modalCatSelect"></select>
+      <button class="save-btn" id="modalSaveBtn" onclick="saveCategory()">移动</button>
+    </div>
+    <div class="modal-actions">
+      <button class="delete-btn" id="modalDeleteBtn" onclick="deleteMemory()">删除这条记忆</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const catId = new URLSearchParams(location.search).get('cat');
+let categories = [];
+let currentMemory = null;
+
+async function load() {
+  if (!catId) { location.href = '/memory.html'; return; }
+
+  try {
+    const res = await fetch('/api/memory');
+    const data = await res.json();
+    categories = data.categories;
+
+    const cat = data.categories.find(c => c.id === catId);
+    if (!cat) { location.href = '/memory.html'; return; }
+
+    document.title = cat.name + ' · 记忆角';
+    document.getElementById('catName').textContent = cat.name;
+    document.getElementById('catDesc').textContent = cat.desc;
+
+    const mems = data.memories[catId] || [];
+    document.getElementById('catCount').textContent = mems.length + ' 条';
+
+    const el = document.getElementById('memoryList');
+
+    if (mems.length === 0) {
+      el.innerHTML = '<div class="empty-state">还没有记忆</div>';
+      lucide.createIcons();
+      return;
+    }
+
+    el.innerHTML = mems.map(m => {
+      const impClass = m.importance >= 8 ? 'high' : '';
+      const pin = m.pinned ? '<span class="pin">📌</span>' : '';
+      const typeTxt = m.type === 'permanent' ? '永久' : '动态';
+      const tags = (m.tags || []).map(t => `<span class="tag">${escHtml(t)}</span>`).join('');
+
+      return `
+        <div class="memory-card" onclick='showDetail(${JSON.stringify(m).replace(/'/g, "&#39;")})'>
+          <div class="top-row">
+            <span class="importance ${impClass}">★${m.importance}</span>
+            ${pin}
+            <span class="type-badge">${typeTxt}</span>
+          </div>
+          <div class="preview">${escHtml(m.preview)}</div>
+          <div class="tags">${tags}</div>
+        </div>
+      `;
+    }).join('');
+
+    lucide.createIcons();
+  } catch (e) {
+    document.getElementById('memoryList').innerHTML =
+      '<div class="empty-state">加载失败，请刷新重试</div>';
+  }
+}
+
+function showDetail(m) {
+  currentMemory = m;
+  document.getElementById('modalContent').textContent = m.content;
+  const tagsEl = document.getElementById('modalTags');
+  tagsEl.innerHTML = (m.tags || []).map(t => `<span class="modal-tag">${t}</span>`).join('');
+  const meta = [];
+  if (m.created) meta.push('创建: ' + m.created.slice(0, 10));
+  if (m.last_active) meta.push('活跃: ' + m.last_active.slice(0, 10));
+  if (m.type) meta.push(m.type === 'permanent' ? '永久' : '动态');
+  document.getElementById('modalMeta').textContent = meta.join(' · ');
+
+  const sel = document.getElementById('modalCatSelect');
+  sel.innerHTML = categories.map(c =>
+    `<option value="${c.id}" ${c.id === catId ? 'selected' : ''}>${c.name}</option>`
+  ).join('');
+
+  const btn = document.getElementById('modalSaveBtn');
+  btn.textContent = '移动';
+  btn.classList.remove('saved');
+
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+async function saveCategory() {
+  if (!currentMemory) return;
+  const newCat = document.getElementById('modalCatSelect').value;
+  if (newCat === catId) return;
+
+  const btn = document.getElementById('modalSaveBtn');
+  btn.textContent = '...';
+
+  await fetch('/api/memory/categorize', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: currentMemory.id, category: newCat })
+  });
+
+  btn.textContent = '已移动';
+  btn.classList.add('saved');
+
+  setTimeout(() => {
+    document.getElementById('modalOverlay').classList.remove('open');
+    load();
+  }, 600);
+}
+
+async function deleteMemory() {
+  if (!currentMemory) return;
+  if (!confirm('确定删除这条记忆吗？')) return;
+
+  const btn = document.getElementById('modalDeleteBtn');
+  btn.textContent = '删除中...';
+
+  await fetch('/api/memory/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: currentMemory.id })
+  });
+
+  btn.textContent = '已删除';
+
+  setTimeout(() => {
+    document.getElementById('modalOverlay').classList.remove('open');
+    load();
+  }, 500);
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modalOverlay')) {
+    document.getElementById('modalOverlay').classList.remove('open');
+  }
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+load();
+</script>
+</body>
+</html>

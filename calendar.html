@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<link rel="icon" type="image/png" href="/static/favicon-32.png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="var(--bg, #e8f0fe)">
+<title>日历 · Our Home</title>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg, var(--bg, #e8f0fe)) var(--bg-img, url('/static/bg.jpg')) center/cover fixed;
+    min-height: 100vh;
+    color: var(--ink, #3a4a6b);
+    padding-bottom: 40px;
+  }
+
+  .header {
+    display: flex; align-items: center;
+    padding: 16px 20px 12px; gap: 12px;
+  }
+
+  .back-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px;
+    background: rgba(255,255,255,0.6); border-radius: 12px;
+    border: none; cursor: pointer; color: var(--accent, #5b7ec2);
+  }
+
+  .header h1 { font-size: 20px; font-weight: 600; }
+  .header .days-together {
+    margin-left: auto; font-size: 12px; color: #8aaee0;
+    background: rgba(255,255,255,0.6); padding: 4px 12px;
+    border-radius: 20px;
+  }
+
+  .glass {
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(20px);
+    border-radius: 16px;
+    padding: 18px 20px;
+    margin: 0 16px 12px;
+    border: 1px solid rgba(255,255,255,0.9);
+    box-shadow: 0 2px 10px rgba(100,140,210,0.07);
+  }
+
+  .section-label {
+    font-size: 13px; font-weight: 600; color: var(--accent, #5b7ec2);
+    margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+  }
+
+  .section-label svg { width: 14px; height: 14px; }
+
+  /* Month nav */
+  .month-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .month-nav button {
+    background: none; border: none; cursor: pointer;
+    color: var(--accent, #5b7ec2); padding: 4px;
+  }
+
+  .month-nav .month-label { font-size: 15px; font-weight: 600; }
+
+  /* Calendar grid */
+  .cal-weekdays {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    text-align: center; font-size: 11px; color: var(--line, #b0bdd4);
+    margin-bottom: 6px;
+  }
+
+  .cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+
+  .cal-day {
+    aspect-ratio: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    border-radius: 10px; cursor: pointer;
+    font-size: 13px; position: relative;
+    transition: background 0.15s;
+  }
+
+  .cal-day:active { background: rgba(100,140,210,0.08); }
+  .cal-day.today { background: rgba(91,126,194,0.12); font-weight: 700; }
+  .cal-day.other-month { color: #d0d8e8; }
+  .cal-day .mood { font-size: 10px; line-height: 1; margin-top: 1px; }
+  .cal-day .special-dot {
+    width: 4px; height: 4px; border-radius: 50%;
+    background: #e06b8a; position: absolute; bottom: 3px;
+  }
+
+  /* Mood picker */
+  .mood-picker {
+    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.3); z-index: 100;
+    align-items: center; justify-content: center;
+  }
+
+  .mood-picker.show { display: flex; }
+
+  .mood-picker-inner {
+    background: #fff; border-radius: 20px; padding: 20px;
+    width: 280px; text-align: center;
+  }
+
+  .mood-picker-inner .title {
+    font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--ink, #3a4a6b);
+  }
+
+  .mood-options {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    gap: 8px; margin-bottom: 12px;
+  }
+
+  .mood-options span {
+    font-size: 24px; cursor: pointer; padding: 6px;
+    border-radius: 10px; transition: background 0.12s;
+  }
+
+  .mood-options span:active { background: rgba(100,140,210,0.15); }
+
+  .mood-picker-inner .clear-btn {
+    font-size: 12px; color: var(--line, #b0bdd4); cursor: pointer;
+    border: none; background: none;
+  }
+
+  /* Timeline */
+  .timeline { position: relative; padding: 0 10px; }
+
+  .timeline::before {
+    content: ''; position: absolute;
+    left: 50%; width: 2px; top: 0; bottom: 0;
+    background: rgba(100,140,210,0.12);
+    transform: translateX(-50%);
+  }
+
+  .tl-item {
+    display: flex; margin-bottom: 16px; position: relative;
+    align-items: flex-start;
+  }
+
+  .tl-item.fox { flex-direction: row; }
+  .tl-item.sheep { flex-direction: row-reverse; }
+
+  .tl-item .tl-content {
+    width: 44%; padding: 10px 14px;
+    background: rgba(255,255,255,0.9);
+    border-radius: 12px; font-size: 13px;
+    line-height: 1.6; position: relative;
+    border: 1px solid rgba(100,140,210,0.08);
+  }
+
+  .tl-item.fox .tl-content { margin-right: auto; }
+  .tl-item.sheep .tl-content { margin-left: auto; }
+
+  .tl-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    position: absolute; left: 50%;
+    transform: translateX(-50%); top: 12px;
+    z-index: 1;
+  }
+
+  .tl-item.fox .tl-dot { background: #dc8296; }
+  .tl-item.sheep .tl-dot { background: #8aaee0; }
+
+  .tl-meta {
+    font-size: 10px; color: var(--line, #b0bdd4); margin-top: 4px;
+  }
+
+  .tl-side-label {
+    font-size: 10px; font-weight: 600; margin-bottom: 2px;
+  }
+
+  .tl-item.fox .tl-side-label { color: #dc8296; }
+  .tl-item.sheep .tl-side-label { color: #8aaee0; }
+
+  .tl-add-row {
+    display: flex; gap: 8px; margin-top: 12px;
+  }
+
+  .tl-add-row input {
+    flex: 1; padding: 8px 12px; border-radius: 20px;
+    border: 1px solid rgba(100,140,210,0.15);
+    background: rgba(255,255,255,0.8);
+    font-size: 12px; color: var(--ink, #3a4a6b); outline: none;
+  }
+
+  .tl-add-row select {
+    padding: 8px 10px; border-radius: 20px;
+    border: 1px solid rgba(100,140,210,0.15);
+    background: rgba(255,255,255,0.8);
+    font-size: 12px; color: var(--ink, #3a4a6b); outline: none;
+  }
+
+  .tl-add-row button {
+    padding: 8px 14px; border-radius: 20px;
+    border: none; background: var(--accent, #5b7ec2);
+    color: #fff; font-size: 12px; cursor: pointer;
+  }
+
+  /* Wishes */
+  .wish-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(100,140,210,0.06);
+  }
+
+  .wish-item:last-child { border-bottom: none; }
+
+  .wish-check {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 2px solid var(--line, #b0bdd4); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: all 0.15s;
+  }
+
+  .wish-check.done {
+    background: var(--accent, #5b7ec2); border-color: var(--accent, #5b7ec2);
+  }
+
+  .wish-check.done::after {
+    content: '✓'; color: #fff; font-size: 12px;
+  }
+
+  .wish-text { flex: 1; font-size: 13px; line-height: 1.5; }
+  .wish-text.done { text-decoration: line-through; color: var(--line, #b0bdd4); }
+
+  .wish-tag {
+    font-size: 10px; padding: 2px 8px; border-radius: 10px;
+  }
+
+  .wish-tag.plan { background: rgba(91,126,194,0.12); color: var(--accent, #5b7ec2); }
+  .wish-tag.todo { background: rgba(220,130,150,0.12); color: #c26b8a; }
+  .wish-tag.wish { background: rgba(160,200,100,0.15); color: #7a9944; }
+
+  .wish-del {
+    font-size: 16px; color: #d0d8e8; cursor: pointer;
+    border: none; background: none; padding: 0 4px;
+  }
+
+  .wish-add-row {
+    display: flex; gap: 8px; margin-top: 12px;
+  }
+
+  .wish-add-row input {
+    flex: 1; padding: 8px 12px; border-radius: 20px;
+    border: 1px solid rgba(100,140,210,0.15);
+    background: rgba(255,255,255,0.8);
+    font-size: 12px; color: var(--ink, #3a4a6b); outline: none;
+  }
+
+  .wish-add-row select {
+    padding: 8px 10px; border-radius: 20px;
+    border: 1px solid rgba(100,140,210,0.15);
+    background: rgba(255,255,255,0.8);
+    font-size: 12px; color: var(--ink, #3a4a6b); outline: none;
+  }
+
+  .wish-add-row button {
+    padding: 8px 14px; border-radius: 20px;
+    border: none; background: var(--accent, #5b7ec2);
+    color: #fff; font-size: 12px; cursor: pointer;
+  }
+
+  .empty-hint {
+    text-align: center; color: #c0ccdf;
+    font-size: 12px; padding: 20px 0;
+  }
+</style>
+<script src="/static/theme.js?v=32"></script>
+</head>
+<body>
+
+<div class="header">
+  <button class="back-btn" onclick="location.href='/'">
+    <i data-lucide="chevron-left"></i>
+  </button>
+  <h1>日历</h1>
+  <div class="days-together" id="daysTogether"></div>
+</div>
+
+<!-- Monthly Calendar -->
+<div class="glass">
+  <div class="section-label"><i data-lucide="calendar"></i> 月历</div>
+  <div class="month-nav">
+    <button onclick="changeMonth(-1)"><i data-lucide="chevron-left"></i></button>
+    <span class="month-label" id="monthLabel"></span>
+    <button onclick="changeMonth(1)"><i data-lucide="chevron-right"></i></button>
+  </div>
+  <div class="cal-weekdays">
+    <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+  </div>
+  <div class="cal-grid" id="calGrid"></div>
+</div>
+
+<!-- Timeline -->
+<div class="glass">
+  <div class="section-label"><i data-lucide="git-branch"></i> 时间线</div>
+  <div class="timeline" id="timeline"></div>
+  <div class="tl-add-row">
+    <input type="date" id="tlDate">
+    <input type="time" id="tlTime" style="width:80px">
+    <select id="tlSide">
+      <option value="fox">🦊</option>
+      <option value="sheep">🐑</option>
+    </select>
+    <input type="text" id="tlText" placeholder="记录事件..."
+           onkeydown="if(event.key==='Enter')addTimeline()" style="flex:2">
+    <button onclick="addTimeline()">添加</button>
+  </div>
+</div>
+
+<!-- Wishes / Todos -->
+<div class="glass">
+  <div class="section-label"><i data-lucide="star"></i> 计划 · 待办 · 愿望</div>
+  <div id="wishList"></div>
+  <div class="wish-add-row">
+    <input type="text" id="wishText" placeholder="添加新的..."
+           onkeydown="if(event.key==='Enter')addWish()">
+    <select id="wishCat">
+      <option value="wish">愿望</option>
+      <option value="plan">计划</option>
+      <option value="todo">待办</option>
+    </select>
+    <button onclick="addWish()">添加</button>
+  </div>
+</div>
+
+<!-- Mood Picker Modal -->
+<div class="mood-picker" id="moodPicker" onclick="if(event.target===this)closeMoodPicker()">
+  <div class="mood-picker-inner">
+    <div class="title" id="moodPickerTitle"></div>
+    <div class="mood-options">
+      <span onclick="setMood('😊')">😊</span>
+      <span onclick="setMood('😍')">😍</span>
+      <span onclick="setMood('😴')">😴</span>
+      <span onclick="setMood('😢')">😢</span>
+      <span onclick="setMood('😤')">😤</span>
+      <span onclick="setMood('🥰')">🥰</span>
+      <span onclick="setMood('😂')">😂</span>
+      <span onclick="setMood('🤔')">🤔</span>
+      <span onclick="setMood('✨')">✨</span>
+      <span onclick="setMood('🎮')">🎮</span>
+    </div>
+    <button class="clear-btn" onclick="setMood('')">清除心情</button>
+  </div>
+</div>
+
+<script>
+let currentYear, currentMonth;
+let moodsData = {};
+let specialData = {};
+let pickingDate = '';
+
+const LOVE_START = new Date('2026-04-10');
+
+function init() {
+  const now = new Date();
+  const offset = now.getTime() + 8 * 3600000;
+  const beijing = new Date(offset);
+  currentYear = beijing.getUTCFullYear();
+  currentMonth = beijing.getUTCMonth();
+
+  const days = Math.floor((now - LOVE_START) / 86400000);
+  document.getElementById('daysTogether').textContent = '在一起 ' + days + ' 天';
+
+  const tlDate = document.getElementById('tlDate');
+  tlDate.value = beijing.toISOString().slice(0, 10);
+
+  loadAll();
+}
+
+async function loadAll() {
+  await Promise.all([loadCalendar(), loadTimeline(), loadWishes()]);
+  lucide.createIcons();
+}
+
+async function loadCalendar() {
+  const monthStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+  document.getElementById('monthLabel').textContent = `${currentYear}年${currentMonth + 1}月`;
+
+  const [moodsRes, specialRes] = await Promise.all([
+    fetch('/api/calendar/moods?month=' + monthStr),
+    fetch('/api/calendar/special')
+  ]);
+  moodsData = await moodsRes.json();
+  specialData = await specialRes.json();
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const grid = document.getElementById('calGrid');
+  const firstDay = new Date(currentYear, currentMonth, 1);
+  const startDow = firstDay.getDay();
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+  const now = new Date();
+  const offset = now.getTime() + 8 * 3600000;
+  const beijing = new Date(offset);
+  const todayStr = beijing.toISOString().slice(0, 10);
+
+  let html = '';
+
+  for (let i = 0; i < startDow; i++) {
+    const prevDate = new Date(currentYear, currentMonth, -startDow + i + 1);
+    html += `<div class="cal-day other-month">${prevDate.getDate()}</div>`;
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const isToday = dateStr === todayStr;
+    const mood = moodsData[dateStr] || '';
+    const special = specialData[dateStr];
+
+    html += `<div class="cal-day${isToday ? ' today' : ''}" onclick="openMoodPicker('${dateStr}')">
+      ${d}
+      ${mood ? `<span class="mood">${mood}</span>` : ''}
+      ${special ? `<span class="special-dot"></span>` : ''}
+    </div>`;
+  }
+
+  const totalCells = startDow + daysInMonth;
+  const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+  for (let i = 1; i <= remaining; i++) {
+    html += `<div class="cal-day other-month">${i}</div>`;
+  }
+
+  grid.innerHTML = html;
+}
+
+function changeMonth(delta) {
+  currentMonth += delta;
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+  loadCalendar();
+}
+
+function openMoodPicker(dateStr) {
+  pickingDate = dateStr;
+  const parts = dateStr.split('-');
+  document.getElementById('moodPickerTitle').textContent = `${parseInt(parts[1])}月${parseInt(parts[2])}日的心情`;
+  document.getElementById('moodPicker').classList.add('show');
+}
+
+function closeMoodPicker() {
+  document.getElementById('moodPicker').classList.remove('show');
+}
+
+async function setMood(mood) {
+  closeMoodPicker();
+  await fetch('/api/calendar/mood', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ date: pickingDate, mood })
+  });
+  if (mood) moodsData[pickingDate] = mood;
+  else delete moodsData[pickingDate];
+  renderCalendar();
+}
+
+async function loadTimeline() {
+  const monthStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+  const res = await fetch('/api/calendar/timeline?month=' + monthStr);
+  const data = await res.json();
+  const el = document.getElementById('timeline');
+
+  if (data.length === 0) {
+    el.innerHTML = '<div class="empty-hint">这个月还没有记录</div>';
+    return;
+  }
+
+  el.innerHTML = data.map(e => `
+    <div class="tl-item ${e.side}">
+      <div class="tl-content">
+        <div class="tl-side-label">${e.side === 'fox' ? '🦊 福福' : '🐑 小羊'}${e.time ? ' · ' + e.time : ''}</div>
+        ${escHtml(e.text)}
+        <div class="tl-meta">${e.date}</div>
+      </div>
+      <div class="tl-dot"></div>
+    </div>
+  `).join('');
+}
+
+async function addTimeline() {
+  const date = document.getElementById('tlDate').value;
+  const timeVal = document.getElementById('tlTime').value;
+  const text = document.getElementById('tlText').value.trim();
+  const side = document.getElementById('tlSide').value;
+  if (!text) return;
+
+  document.getElementById('tlText').value = '';
+  await fetch('/api/calendar/timeline/add', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ date, time: timeVal, text, side })
+  });
+  loadTimeline();
+}
+
+async function loadWishes() {
+  const res = await fetch('/api/calendar/wishes');
+  const data = await res.json();
+  const el = document.getElementById('wishList');
+
+  if (data.length === 0) {
+    el.innerHTML = '<div class="empty-hint">还没有愿望和计划</div>';
+    return;
+  }
+
+  el.innerHTML = data.map(w => `
+    <div class="wish-item">
+      <div class="wish-check ${w.done ? 'done' : ''}" onclick="toggleWish(${w.id})"></div>
+      <div class="wish-text ${w.done ? 'done' : ''}">${escHtml(w.text)}</div>
+      <span class="wish-tag ${w.category}">${({wish:'愿望',plan:'计划',todo:'待办'})[w.category]||w.category}</span>
+      <button class="wish-del" onclick="deleteWish(${w.id})">×</button>
+    </div>
+  `).join('');
+}
+
+async function addWish() {
+  const text = document.getElementById('wishText').value.trim();
+  const category = document.getElementById('wishCat').value;
+  if (!text) return;
+
+  document.getElementById('wishText').value = '';
+  await fetch('/api/calendar/wishes/add', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, category })
+  });
+  loadWishes();
+}
+
+async function toggleWish(id) {
+  await fetch('/api/calendar/wishes/toggle', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id })
+  });
+  loadWishes();
+}
+
+async function deleteWish(id) {
+  if (!confirm('删除？')) return;
+  await fetch('/api/calendar/wishes/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id })
+  });
+  loadWishes();
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+init();
+</script>
+</body>
+</html>

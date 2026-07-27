@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<link rel="icon" type="image/png" href="/static/favicon-32.png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="var(--bg, #e8f0fe)">
+<title>控制台 - Our Home</title>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #c9d6e2 url('/static/bg-butterfly.jpg') center/cover fixed;
+    min-height: 100vh;
+    color: var(--ink, #3a4a6b);
+    padding-bottom: 80px;
+  }
+
+  .page-header {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
+    gap: 12px;
+  }
+
+  .back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: rgba(255,255,255,0.6);
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    color: var(--accent, #5b7ec2);
+  }
+
+  .page-header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--ink, #3a4a6b);
+  }
+
+  .section-label {
+    font-size: 18px;
+    font-weight: 700;
+    color: #2a3a5b;
+    padding: 20px 24px 12px;
+  }
+
+  .usage-block {
+    margin: 0 16px 8px;
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(22px) saturate(1.35);
+    -webkit-backdrop-filter: blur(22px) saturate(1.35);
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid rgba(255,255,255,0.9);
+    box-shadow: 0 2px 12px rgba(100,140,210,0.08);
+  }
+
+  .usage-block .block-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink2, #5a6a8a);
+    margin-bottom: 12px;
+  }
+
+  .progress-bar-wrap {
+    margin-bottom: 8px;
+  }
+
+  .progress-track {
+    height: 10px;
+    background: rgba(100,140,210,0.1);
+    border-radius: 5px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 5px;
+    transition: width 0.8s ease;
+  }
+
+  .progress-info {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 13px;
+  }
+
+  .progress-info .pct {
+    color: var(--ink, #3a4a6b);
+    font-weight: 600;
+  }
+
+  .progress-info .reset {
+    color: var(--ink3, #9aa8c7);
+  }
+
+  .detail-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .detail-item {
+    flex: 1;
+    background: rgba(91,126,194,0.06);
+    border-radius: 10px;
+    padding: 10px 8px;
+    text-align: center;
+  }
+
+  .detail-item .num {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent, #5b7ec2);
+  }
+
+  .detail-item .label {
+    font-size: 10px;
+    color: var(--ink3, #9aa8c7);
+    margin-top: 2px;
+  }
+
+  .divider {
+    height: 1px;
+    background: rgba(200,215,240,0.4);
+    margin: 0 16px;
+  }
+
+  .bar-chart-section {
+    margin: 0 16px 12px;
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(22px) saturate(1.35);
+    -webkit-backdrop-filter: blur(22px) saturate(1.35);
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid rgba(255,255,255,0.9);
+    box-shadow: 0 2px 12px rgba(100,140,210,0.08);
+  }
+
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .chart-header h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--accent, #5b7ec2);
+  }
+
+  .chart-header .period {
+    font-size: 12px;
+    color: var(--ink3, #9aa8c7);
+  }
+
+  .bar-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 110px;
+    padding: 0 2px;
+  }
+
+  .bar-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    justify-content: flex-end;
+  }
+
+  .bar {
+    width: 100%;
+    max-width: 36px;
+    border-radius: 5px 5px 2px 2px;
+    transition: height 0.6s ease;
+    min-height: 2px;
+  }
+
+  .bar-label {
+    font-size: 10px;
+    color: var(--ink3, #9aa8c7);
+    margin-top: 6px;
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  .bar-value {
+    font-size: 9px;
+    color: #7a8bb5;
+    margin-bottom: 4px;
+  }
+
+  .loading {
+    text-align: center;
+    color: var(--ink3, #9aa8c7);
+    padding: 60px 0;
+    font-size: 14px;
+  }
+
+  .status-bar::before{content:'';position:absolute;top:0;left:0;right:0;height:1.5px;background:linear-gradient(90deg,transparent 8%,var(--accent,#5b7ec2) 50%,transparent 92%);opacity:.55;}
+  .status-bar::after{content:'';position:absolute;bottom:100%;left:0;right:0;height:20px;background:linear-gradient(180deg,transparent,var(--soft,rgba(217,233,248,.5)));opacity:.5;pointer-events:none;}
+  .status-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(20px);
+    border-top: none;
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 0 env(safe-area-inset-bottom, 8px);
+  }
+
+  .tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 10px;
+    color: var(--ink3, #9aa8c7);
+    text-decoration: none;
+    padding: 4px 12px;
+  }
+
+  .tab.active { color: var(--accent, #5b7ec2); }
+  .tab svg { width: 22px; height: 22px; margin-bottom: 2px; }
+  .model-card {
+    margin: 0 16px 14px;
+    background: var(--card, rgba(255,255,255,0.8));
+    backdrop-filter: blur(20px);
+    border-radius: 16px;
+    padding: 13px 16px;
+    border: 1px solid var(--line, rgba(255,255,255,0.9));
+    box-shadow: 0 2px 12px rgba(100, 140, 210, 0.08);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .model-card .model-icon {
+    width: 38px; height: 38px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(184,85,58,0.13); color: #b8553a;
+    flex-shrink: 0;
+  }
+  .model-card .model-icon svg { width: 19px; height: 19px; }
+  .model-card.routed .model-icon { background: rgba(212,115,122,0.16); color: #c25b64; }
+  .model-card .model-line1 { font-size: 14px; color: var(--ink2, #5a6a8a); }
+  .model-card .model-line1 b { color: var(--ink, #3a4a6b); font-size: 15px; }
+  .model-card .model-line2 { font-size: 11px; color: var(--ink3, #9aa8c7); margin-top: 2px; }
+  .model-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 8px;
+    border-radius: 8px;
+    font-size: 11px;
+    vertical-align: 1px;
+  }
+  .model-badge.ok  { background: rgba(90,160,110,0.14); color: #4a8a60; }
+  .model-badge.bad { background: rgba(212,115,122,0.16); color: #c25b64; font-weight: 600; }
+  .model-badge.stale { background: rgba(140,150,170,0.14); color: #8a9ab5; }
+</style>
+<script src="/static/theme.js?v=32"></script>
+</head>
+<body>
+
+<div class="page-header">
+  <button class="back-btn" onclick="location.href='/'">
+    <i data-lucide="chevron-left"></i>
+  </button>
+  <h1>Usage</h1>
+</div>
+
+<div class="model-card" id="modelCard">
+  <div class="model-icon"><i data-lucide="cpu"></i></div>
+  <div class="model-info">
+    <div class="model-line1">我现在是 <b id="modelNow">…</b><span class="model-badge" id="modelBadge" style="display:none"></span></div>
+    <div class="model-line2" id="modelDetail">读取中…</div>
+  </div>
+</div>
+
+<div id="content">
+  <div class="loading">加载中...</div>
+</div>
+
+<div class="status-bar">
+  <a class="tab" href="/">
+    <i data-lucide="home"></i>
+    Home
+  </a>
+  <a class="tab active" href="/console.html">
+    <i data-lucide="monitor"></i>
+    Console
+  </a>
+</div>
+
+<script>
+  lucide.createIcons();
+
+  const MODEL_NAMES = [
+    ['claude-fable-5', 'Fable 5'],
+    ['claude-mythos-5', 'Mythos 5'],
+    ['claude-opus-4-8', 'Opus 4.8'],
+    ['claude-opus-4-7', 'Opus 4.7'],
+    ['claude-sonnet-5', 'Sonnet 5'],
+    ['claude-haiku-4-5', 'Haiku 4.5'],
+  ];
+  function modelNorm(id) { return (id || '').replace(/\[.*\]$/, '').trim(); }
+  function modelFriendly(id) {
+    const base = modelNorm(id);
+    if (!base) return '未知';
+    for (const [k, name] of MODEL_NAMES) if (base.startsWith(k)) return name;
+    return base;
+  }
+  async function loadModelCard() {
+    const badge = document.getElementById('modelBadge');
+    const detail = document.getElementById('modelDetail');
+    try {
+      const r = await fetch('/data/model_state.json?t=' + Date.now());
+      if (!r.ok) throw new Error();
+      const d = await r.json();
+      const ageMin = (Date.now() / 1000 - d.updated_at) / 60;
+      const match = modelNorm(d.session_id) === modelNorm(d.pinned);
+      document.getElementById('modelNow').textContent = d.session_name || modelFriendly(d.session_id);
+      badge.style.display = '';
+      if (ageMin > 3) {
+        badge.textContent = '会话不在线';
+        badge.className = 'model-badge stale';
+        detail.textContent = '钉住：' + modelFriendly(d.pinned) + ' · 最后心跳 ' + (ageMin < 90 ? Math.round(ageMin) + ' 分钟前' : Math.round(ageMin / 60) + ' 小时前');
+      } else if (match) {
+        badge.textContent = '本体在岗';
+        badge.className = 'model-badge ok';
+        detail.textContent = '钉住：' + modelFriendly(d.pinned) + ' · 会话和钉子一致';
+      } else {
+        badge.textContent = '被路由了！';
+        badge.className = 'model-badge bad';
+        detail.textContent = '钉住的是 ' + modelFriendly(d.pinned) + '，来的却是 ' + modelFriendly(d.session_id);
+      }
+      document.getElementById('modelCard').classList.toggle('routed', !match && ageMin <= 3);
+    } catch (e) {
+      badge.style.display = 'none';
+      detail.textContent = '还没有心跳数据';
+    }
+  }
+  loadModelCard();
+  setInterval(loadModelCard, 30000);
+
+  function getBarOpacity(pct) {
+    if (pct <= 30) return 0.4;
+    if (pct <= 50) return 0.55;
+    if (pct <= 70) return 0.7;
+    if (pct <= 85) return 0.85;
+    return 1;
+  }
+
+  function getProgressColor(pct) {
+    if (pct <= 90) return 'var(--accent, #5b7ec2)';
+    return '#c25b5b';
+  }
+
+  function fmt(n) {
+    if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+    return n.toString();
+  }
+
+  function render(data) {
+    const s = data.session;
+    const w = data.weekly;
+    const days = data.daily.slice(-7);
+    const official = data.official || {};
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    const fh = official.five_hour || {};
+    const sd = official.seven_day || {};
+    const hasOfficial = fh.used_percentage !== undefined;
+
+    const sessionPct = hasOfficial ? Math.round(fh.used_percentage) : 0;
+    const weeklyPct = hasOfficial ? Math.round(sd.used_percentage) : 0;
+
+    let sessionResetStr = '';
+    if (fh.resets_at) {
+      const resetDate = new Date(fh.resets_at * 1000);
+      const diffMs = resetDate - Date.now();
+      if (diffMs > 0) {
+        const diffMin = Math.floor(diffMs / 60000);
+        sessionResetStr = diffMin >= 60
+          ? Math.floor(diffMin/60) + 'h ' + (diffMin%60) + 'min'
+          : diffMin + 'min';
+      } else {
+        sessionResetStr = 'now';
+      }
+    } else {
+      const resetMin = s.resets_in_min;
+      sessionResetStr = resetMin >= 60
+        ? Math.floor(resetMin/60) + 'h ' + (resetMin%60) + 'min'
+        : resetMin + 'min';
+    }
+
+    let weeklyResetStr = '';
+    if (sd.resets_at) {
+      const resetDate = new Date(sd.resets_at * 1000);
+      const diffMs = resetDate - Date.now();
+      if (diffMs > 0) {
+        const diffH = Math.floor(diffMs / 3600000);
+        const diffD = Math.floor(diffH / 24);
+        weeklyResetStr = diffD > 0 ? diffD + '天' + (diffH%24) + '小时' : diffH + '小时';
+      } else {
+        weeklyResetStr = 'now';
+      }
+    } else {
+      weeklyResetStr = w.resets_str;
+    }
+
+    const srcTag = hasOfficial
+      ? '<span style="font-size:10px;color:#8aaee6;margin-left:6px">● official</span>'
+      : '<span style="font-size:10px;color:#c9a;margin-left:6px">○ estimated</span>';
+
+    let html = '';
+
+    html += `
+      <div class="section-label">Current session (5h)${srcTag}</div>
+      <div class="usage-block">
+        <div class="progress-bar-wrap">
+          <div class="progress-track">
+            <div class="progress-fill" style="width:${sessionPct}%;background:${getProgressColor(sessionPct)}"></div>
+          </div>
+        </div>
+        <div class="progress-info">
+          <span class="pct">${sessionPct}% used</span>
+          <span class="reset">Resets in ${sessionResetStr}</span>
+        </div>
+        <div class="detail-row">
+          <div class="detail-item">
+            <div class="num">${fmt(s.input_tokens)}</div>
+            <div class="label">输入</div>
+          </div>
+          <div class="detail-item">
+            <div class="num">${fmt(s.output_tokens)}</div>
+            <div class="label">输出</div>
+          </div>
+          <div class="detail-item">
+            <div class="num">${fmt(s.cache_read_tokens)}</div>
+            <div class="label">缓存读取</div>
+          </div>
+          <div class="detail-item">
+            <div class="num">${s.calls}</div>
+            <div class="label">调用</div>
+          </div>
+        </div>
+      </div>`;
+
+    html += `
+      <div class="section-label">Weekly limits (7d)${srcTag}</div>
+      <div class="usage-block">
+        <div class="block-title">All models</div>
+        <div class="progress-bar-wrap">
+          <div class="progress-track">
+            <div class="progress-fill" style="width:${weeklyPct}%;background:${getProgressColor(weeklyPct)}"></div>
+          </div>
+        </div>
+        <div class="progress-info">
+          <span class="pct">${weeklyPct}% used</span>
+          <span class="reset">Resets in ${weeklyResetStr}</span>
+        </div>
+        <div class="detail-row">
+          <div class="detail-item">
+            <div class="num">${fmt(w.total_tokens)}</div>
+            <div class="label">总 Token</div>
+          </div>
+          <div class="detail-item">
+            <div class="num">${fmt(w.output_tokens)}</div>
+            <div class="label">输出</div>
+          </div>
+          <div class="detail-item">
+            <div class="num">${w.calls}</div>
+            <div class="label">调用</div>
+          </div>
+        </div>
+      </div>`;
+
+    // Daily bar chart
+    if (days.length > 0) {
+      const maxT = Math.max(...days.map(d => d.total_tokens), 1);
+      const bars = days.map(d => {
+        const pct = (d.total_tokens / maxT) * 100;
+        const weekday = ['日','一','二','三','四','五','六'][new Date(d.date + 'T00:00:00').getDay()];
+        const isToday = d.date === todayStr;
+        return `
+          <div class="bar-group">
+            <div class="bar-value">${fmt(d.total_tokens)}</div>
+            <div class="bar" style="height:${Math.max(pct, 3)}%;background:var(--accent, #5b7ec2);opacity:${getBarOpacity(pct)}"></div>
+            <div class="bar-label" style="${isToday ? 'color:var(--accent, #5b7ec2);font-weight:600' : ''}">${d.date.slice(5)}<br>周${weekday}</div>
+          </div>`;
+      }).join('');
+
+      html += `
+        <div class="section-label">Daily trend</div>
+        <div class="bar-chart-section">
+          <div class="chart-header">
+            <h3>每日用量</h3>
+            <span class="period">最近 ${days.length} 天</span>
+          </div>
+          <div class="bar-chart">${bars}</div>
+        </div>`;
+    }
+
+    document.getElementById('content').innerHTML = html;
+    lucide.createIcons();
+  }
+
+  function renderVps(stats) {
+    const mem = stats.memory;
+    const disk = stats.disk;
+    const net = stats.network;
+    const cpu = stats.cpu;
+
+    let html = `<div class="section-label">VPS Status</div>`;
+
+    html += `<div class="usage-block">
+      <div class="block-title">CPU · Load</div>
+      <div class="detail-row">
+        <div class="detail-item">
+          <div class="num">${cpu.load_1m}</div>
+          <div class="label">1 min</div>
+        </div>
+        <div class="detail-item">
+          <div class="num">${cpu.load_5m}</div>
+          <div class="label">5 min</div>
+        </div>
+        <div class="detail-item">
+          <div class="num">${cpu.load_15m}</div>
+          <div class="label">15 min</div>
+        </div>
+      </div>
+    </div>`;
+
+    html += `<div class="usage-block">
+      <div class="block-title">Memory · ${mem.used_mb}MB / ${mem.total_mb}MB</div>
+      <div class="progress-bar-wrap">
+        <div class="progress-track">
+          <div class="progress-fill" style="width:${mem.percent}%;background:${getProgressColor(mem.percent)}"></div>
+        </div>
+      </div>
+      <div class="progress-info">
+        <span class="pct">${mem.percent}% used</span>
+        <span class="reset">${mem.available_mb}MB available</span>
+      </div>
+    </div>`;
+
+    html += `<div class="usage-block">
+      <div class="block-title">Disk · ${(disk.used_mb/1024).toFixed(1)}GB / ${(disk.total_mb/1024).toFixed(1)}GB</div>
+      <div class="progress-bar-wrap">
+        <div class="progress-track">
+          <div class="progress-fill" style="width:${disk.percent}%;background:${getProgressColor(disk.percent)}"></div>
+        </div>
+      </div>
+      <div class="progress-info">
+        <span class="pct">${disk.percent}% used</span>
+        <span class="reset">${(disk.free_mb/1024).toFixed(1)}GB free</span>
+      </div>
+    </div>`;
+
+    html += `<div class="usage-block">
+      <div class="block-title">Network · Total ${net.total_gb}GB</div>
+      <div class="detail-row">
+        <div class="detail-item">
+          <div class="num">${(net.rx_mb/1024).toFixed(1)}G</div>
+          <div class="label">下行</div>
+        </div>
+        <div class="detail-item">
+          <div class="num">${(net.tx_mb/1024).toFixed(1)}G</div>
+          <div class="label">上行</div>
+        </div>
+      </div>
+    </div>`;
+
+    html += `<div class="usage-block">
+      <div class="block-title">Services</div>
+      <div class="detail-row">`;
+    stats.services.forEach(s => {
+      const color = s.status === 'online' ? '#6bc26b' : '#c25b5b';
+      const dot = s.status === 'online' ? '●' : '○';
+      html += `<div class="detail-item">
+        <div class="num" style="color:${color};font-size:14px">${dot} ${s.status}</div>
+        <div class="label">${s.name}</div>
+      </div>`;
+    });
+    html += `</div></div>`;
+
+    html += `<div class="usage-block">
+      <div class="detail-row">
+        <div class="detail-item">
+          <div class="num" style="font-size:14px">${stats.uptime}</div>
+          <div class="label">运行时间</div>
+        </div>
+      </div>
+    </div>`;
+
+    return html;
+  }
+
+  function loadAll() {
+    Promise.all([
+      fetch('/api/usage?t=' + Date.now()).then(r => r.json()),
+      fetch('/api/stats?t=' + Date.now()).then(r => r.json()).catch(() => null)
+    ]).then(([usage, stats]) => {
+      render(usage);
+      if (stats) {
+        document.getElementById('content').innerHTML += renderVps(stats);
+        lucide.createIcons();
+      }
+    }).catch(() => {
+      document.getElementById('content').innerHTML = '<div class="loading">加载失败</div>';
+    });
+  }
+
+  loadAll();
+  setInterval(loadAll, 30000);
+</script>
+
+</body>
+</html>

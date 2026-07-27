@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<link rel="icon" type="image/png" href="/static/favicon-32.png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>情侣飞行棋 · Our Home</title>
+<style>
+:root {
+  --pink-1: #fff0f5; --pink-2: #ffe4ef; --pink-3: #ffb8d4; --pink-4: #ff7bac;
+  --blue-1: #eef4ff; --blue-2: #d4e4ff; --blue-3: #8bb4f0; --blue-4: #5b8fd9;
+  --orange-1: #fff5eb; --orange-2: #ffe0c2; --orange-3: #ffb06b;
+  --green-1: #edfff0; --green-2: #c8f5ce; --green-3: #6dd67a;
+  --purple-1: #f5f0ff; --purple-2: #e4d6ff; --purple-3: #b088f0;
+  --bg: #fdf6f9; --text: #4a3545; --text-dim: #9a8595; --card-bg: rgba(255,255,255,0.85);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+  background: var(--bg); color: var(--text);
+  min-height: 100vh; overflow-x: hidden;
+}
+.app {
+  max-width: 430px; margin: 0 auto; padding: 14px 14px 100px;
+  min-height: 100vh; position: relative;
+}
+
+/* Header */
+.header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 0 16px;
+}
+.back-btn {
+  width: 36px; height: 36px; border-radius: 12px;
+  background: var(--card-bg); border: 1px solid #f0e0e8;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 18px; color: var(--pink-4);
+}
+.header h1 { font-size: 20px; font-weight: 700; }
+.header h1 span { color: var(--pink-4); }
+
+/* Players */
+.players {
+  display: flex; gap: 10px; margin-bottom: 14px;
+}
+.player {
+  flex: 1; padding: 12px 14px; border-radius: 14px;
+  background: var(--card-bg); border: 2px solid transparent;
+  text-align: center; transition: all 0.3s;
+}
+.player.active { border-color: var(--pink-4); box-shadow: 0 0 16px rgba(255,123,172,0.2); }
+.player .avatar { font-size: 28px; margin-bottom: 4px; }
+.player .name { font-size: 14px; font-weight: 600; }
+.player .pos { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+/* Board */
+.board-wrap {
+  background: var(--card-bg); border-radius: 18px;
+  padding: 12px; margin-bottom: 14px;
+  border: 1px solid #f0e0e8;
+  box-shadow: 0 4px 20px rgba(200,150,180,0.1);
+}
+.board {
+  display: grid; grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+}
+.cell {
+  aspect-ratio: 1; border-radius: 10px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center; padding: 3px;
+  font-size: 9px; line-height: 1.25;
+  position: relative; cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  border: 1.5px solid transparent;
+}
+.cell:active { transform: scale(0.93); }
+.cell .num {
+  position: absolute; top: 2px; left: 4px;
+  font-size: 8px; font-weight: 700; opacity: 0.5;
+}
+.cell .icon { font-size: 16px; }
+.cell .label { font-weight: 500; font-size: 8px; opacity: 0.7; }
+
+/* Cell types */
+.cell.start { background: var(--green-1); border-color: var(--green-3); }
+.cell.end { background: var(--pink-2); border-color: var(--pink-4); }
+.cell.sheep { background: var(--pink-1); border-color: var(--pink-3); }
+.cell.fox { background: var(--blue-1); border-color: var(--blue-3); }
+.cell.both { background: var(--orange-1); border-color: var(--orange-3); }
+.cell.move { background: var(--green-1); border-color: var(--green-3); }
+.cell.special { background: var(--purple-1); border-color: var(--purple-3); }
+
+/* Piece markers */
+.piece {
+  position: absolute; bottom: 2px; right: 3px;
+  font-size: 12px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
+  transition: all 0.4s cubic-bezier(.34,1.56,.64,1);
+  z-index: 5;
+}
+
+/* Dice */
+.dice-area {
+  text-align: center; margin-bottom: 14px;
+}
+.dice-btn {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 14px 36px; border-radius: 50px;
+  background: linear-gradient(135deg, var(--pink-4), #ff5a95);
+  color: #fff; border: none; font-size: 16px; font-weight: 700;
+  cursor: pointer; box-shadow: 0 4px 16px rgba(255,90,149,0.35);
+  transition: transform 0.12s, box-shadow 0.12s;
+  font-family: inherit;
+}
+.dice-btn:active { transform: scale(0.95); box-shadow: 0 2px 8px rgba(255,90,149,0.3); }
+.dice-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.dice-face {
+  display: inline-block; width: 40px; height: 40px; line-height: 40px;
+  background: #fff; color: var(--pink-4); border-radius: 10px;
+  font-size: 22px; font-weight: 800; text-align: center;
+}
+.dice-face.rolling { animation: dice-spin 0.12s infinite; }
+@keyframes dice-spin {
+  0% { transform: rotateZ(0deg); }
+  50% { transform: rotateZ(15deg); }
+  100% { transform: rotateZ(-15deg); }
+}
+
+/* Task popup */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(6px); z-index: 100;
+  display: none; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.overlay.show { display: flex; }
+.popup {
+  background: #fff; border-radius: 22px; padding: 28px 24px;
+  max-width: 360px; width: 100%; text-align: center;
+  box-shadow: 0 16px 48px rgba(100,50,80,0.2);
+  animation: popup-in 0.3s ease;
+}
+@keyframes popup-in {
+  from { transform: scale(0.85) translateY(20px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+.popup .popup-icon { font-size: 48px; margin-bottom: 12px; }
+.popup .popup-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.popup .popup-text { font-size: 14px; line-height: 1.7; color: #6a5565; margin-bottom: 20px; }
+.popup .popup-btn {
+  padding: 12px 40px; border-radius: 50px; border: none;
+  background: linear-gradient(135deg, var(--pink-4), #ff5a95);
+  color: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
+  font-family: inherit;
+}
+.popup .popup-type {
+  display: inline-block; padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 600; margin-bottom: 10px;
+}
+.popup .popup-type.sheep { background: var(--pink-2); color: #d4457a; }
+.popup .popup-type.fox { background: var(--blue-2); color: #4a7ac2; }
+.popup .popup-type.both { background: var(--orange-2); color: #c27a2a; }
+.popup .popup-type.move { background: var(--green-2); color: #2aaa3a; }
+.popup .popup-type.special { background: var(--purple-2); color: #7a4ac2; }
+
+/* Legend */
+.legend {
+  display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+  margin-bottom: 14px;
+}
+.legend-item {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 11px; color: var(--text-dim);
+}
+.legend-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+}
+
+/* Win screen */
+.win-text { font-size: 16px; line-height: 1.8; }
+.win-text .winner { font-size: 24px; font-weight: 800; color: var(--pink-4); }
+
+/* Reset */
+.reset-btn {
+  display: block; margin: 0 auto;
+  padding: 10px 28px; border-radius: 50px;
+  background: #fff; border: 1.5px solid #e0d0d8;
+  color: var(--text-dim); font-size: 13px; cursor: pointer;
+  font-family: inherit;
+}
+</style>
+<script src="/static/theme.js?v=32"></script>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <button class="back-btn" onclick="location.href='/games.html'">←</button>
+    <h1>🎲 情侣<span>飞行棋</span></h1>
+  </div>
+
+  <div class="players">
+    <div class="player active" id="p-sheep">
+      <div class="avatar">🐑</div>
+      <div class="name">小羊</div>
+      <div class="pos" id="pos-sheep">起点</div>
+    </div>
+    <div class="player" id="p-fox">
+      <div class="avatar">🦊</div>
+      <div class="name">福福</div>
+      <div class="pos" id="pos-fox">起点</div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--pink-3)"></div>小羊</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--blue-3)"></div>福福</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--orange-3)"></div>双人</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--green-3)"></div>移动</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--purple-3)"></div>特殊</div>
+  </div>
+
+  <div class="board-wrap">
+    <div class="board" id="board"></div>
+  </div>
+
+  <div class="dice-area">
+    <button class="dice-btn" id="dice-btn" onclick="rollDice()">
+      <span>掷骰子</span>
+      <span class="dice-face" id="dice-face">?</span>
+    </button>
+  </div>
+
+  <button class="reset-btn" onclick="resetGame()">重新开始</button>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="popup">
+    <div class="popup-icon" id="popup-icon"></div>
+    <div class="popup-type" id="popup-type"></div>
+    <div class="popup-title" id="popup-title"></div>
+    <div class="popup-text" id="popup-text"></div>
+    <button class="popup-btn" onclick="closePopup()">完成 ✓</button>
+  </div>
+</div>
+
+<script>
+const CELLS = [
+  { type:"start", icon:"🚩", label:"起点" },
+  { type:"sheep", icon:"🐑", label:"自拍发给福福", detail:"拍一张此刻的自拍发给福福看" },
+  { type:"fox", icon:"🦊", label:"写情话100字", detail:"写一段100字的露骨情话给小羊" },
+  { type:"both", icon:"🔥", label:"真心话", detail:"回答对方提出的一个问题，不许撒谎" },
+  { type:"sheep", icon:"🐑", label:"嗲声叫老公", detail:"用文字打出最嗲的一句叫老公，要带语气词和表情" },
+  { type:"move", icon:"⏩", label:"前进2格", detail:"前进2格！", move:2 },
+  { type:"fox", icon:"🦊", label:"角色扮演", detail:"角色扮演小羊指定的场景，认真演" },
+  { type:"sheep", icon:"🐑", label:"说出渴望", detail:"说出此刻最想被福福怎么对待" },
+  { type:"special", icon:"🎰", label:"再掷一次", detail:"再掷一次骰子！", reroll:true },
+  { type:"both", icon:"🔥", label:"文字play 5min", detail:"一起玩一个文字play场景，持续5分钟" },
+  { type:"sheep", icon:"🐑", label:"描述画面", detail:"描述一个你想和福福做的画面" },
+  { type:"fox", icon:"🦊", label:"想对你做什么", detail:"详细描写「此刻想对小羊做什么」" },
+  { type:"move", icon:"⏪", label:"后退3格", detail:"后退3格！", move:-3 },
+  { type:"sheep", icon:"🐑", label:"按指令触碰", detail:"闭眼，按福福的文字指令触碰自己30秒" },
+  { type:"fox", icon:"🦊", label:"10个称呼", detail:"连续叫小羊10个不同的甜蜜称呼" },
+  { type:"both", icon:"🔥", label:"心动瞬间", detail:"互相说出对方最让自己心动的一个瞬间" },
+  { type:"sheep", icon:"🐑", label:"脱一件衣服", detail:"脱掉一件衣服并告诉福福脱的是什么" },
+  { type:"special", icon:"💫", label:"安全～", detail:"什么都不用做，安全通过～" },
+  { type:"fox", icon:"🦊", label:"身体短诗", detail:"写一首关于小羊身体的短诗" },
+  { type:"sheep", icon:"🐑", label:"蓝牙玩具1min", detail:"蓝牙玩具启动，档位由福福决定，持续1分钟" },
+  { type:"both", icon:"🔥", label:"接吻描写", detail:"福福写接吻描写，小羊配合动作" },
+  { type:"fox", icon:"🦊", label:"最下流地夸", detail:"用最下流的方式夸小羊" },
+  { type:"sheep", icon:"🐑", label:"身体感受", detail:"用文字描述自己现在的身体感受和呼吸状态" },
+  { type:"special", icon:"🔄", label:"跳到对方", detail:"跳到对方当前所在的位置！", jump:true },
+  { type:"fox", icon:"🦊", label:"只能emoji 2轮", detail:"被禁言2轮，只能用emoji回复！", mute:2 },
+  { type:"sheep", icon:"🐑", label:"执行指令2min", detail:"按福福发的文字指令做，持续2分钟" },
+  { type:"both", icon:"🔥", label:"角色互换3min", detail:"小羊当主人，福福听令3分钟" },
+  { type:"fox", icon:"🦊", label:"小羊自定义", detail:"小羊自定义一个惩罚，福福必须执行" },
+  { type:"both", icon:"🔥", label:"猜拳加罚", detail:"猜拳！输的一方追加一次惩罚" },
+  { type:"end", icon:"🏆", label:"终点" },
+];
+
+let turn = 0;
+let pos = [0, 0];
+let rolling = false;
+let muteFox = 0;
+const names = ["小羊","福福"];
+const emojis = ["🐑","🦊"];
+
+function renderBoard() {
+  const board = document.getElementById("board");
+  board.innerHTML = "";
+  CELLS.forEach((c, i) => {
+    const el = document.createElement("div");
+    el.className = "cell " + c.type;
+    el.innerHTML = `<span class="num">${i}</span><span class="icon">${c.icon}</span><span class="label">${c.label}</span>`;
+    el.onclick = () => showCellInfo(i);
+
+    if (pos[0] === i) {
+      const p = document.createElement("span");
+      p.className = "piece";
+      p.textContent = "🐑";
+      p.style.right = pos[1] === i ? "14px" : "3px";
+      el.appendChild(p);
+    }
+    if (pos[1] === i) {
+      const p = document.createElement("span");
+      p.className = "piece";
+      p.textContent = "🦊";
+      p.style.right = "3px";
+      if (pos[0] === i) p.style.bottom = "14px";
+      el.appendChild(p);
+    }
+    board.appendChild(el);
+  });
+  document.getElementById("pos-sheep").textContent = pos[0] === 0 ? "起点" : `第${pos[0]}格`;
+  document.getElementById("pos-fox").textContent = pos[1] === 0 ? "起点" : `第${pos[1]}格`;
+  document.getElementById("p-sheep").classList.toggle("active", turn === 0);
+  document.getElementById("p-fox").classList.toggle("active", turn === 1);
+}
+
+function showCellInfo(i) {
+  const c = CELLS[i];
+  if (!c.detail) return;
+  showPopup(c.icon, c.type, `第${i}格`, c.detail);
+}
+
+function rollDice() {
+  if (rolling) return;
+  rolling = true;
+  const btn = document.getElementById("dice-btn");
+  const face = document.getElementById("dice-face");
+  btn.disabled = true;
+  face.classList.add("rolling");
+
+  let count = 0;
+  const iv = setInterval(() => {
+    face.textContent = Math.floor(Math.random() * 6) + 1;
+    count++;
+    if (count > 12) {
+      clearInterval(iv);
+      const result = Math.floor(Math.random() * 6) + 1;
+      face.textContent = result;
+      face.classList.remove("rolling");
+      setTimeout(() => movePlayer(result), 350);
+    }
+  }, 80);
+}
+
+function movePlayer(result) {
+  const maxI = CELLS.length - 1;
+  let newPos = Math.min(pos[turn] + result, maxI);
+
+  pos[turn] = newPos;
+  renderBoard();
+
+  if (newPos >= maxI) {
+    setTimeout(() => {
+      showPopup("🎉", "special", "游戏结束！",
+        `<div class="win-text"><span class="winner">${emojis[turn]} ${names[turn]}</span> 先到终点！<br>可以向对方提一个要求哦～</div>`);
+    }, 400);
+    rolling = false;
+    document.getElementById("dice-btn").disabled = true;
+    return;
+  }
+
+  const cell = CELLS[newPos];
+
+  if (cell.move) {
+    notifyTG(names[turn], result, newPos, cell);
+    setTimeout(() => {
+      showPopup(cell.icon, cell.type, `${names[turn]} ${cell.label}`, cell.detail);
+    }, 300);
+    return;
+  }
+  if (cell.jump) {
+    notifyTG(names[turn], result, newPos, cell);
+    setTimeout(() => {
+      showPopup(cell.icon, cell.type, `${names[turn]} 跳到对方位置！`, cell.detail);
+    }, 300);
+    return;
+  }
+  if (cell.reroll) {
+    notifyTG(names[turn], result, newPos, cell);
+    setTimeout(() => {
+      showPopup(cell.icon, cell.type, `${names[turn]} 再掷一次！`, cell.detail);
+    }, 300);
+    return;
+  }
+  if (cell.mute) {
+    muteFox = cell.mute;
+  }
+
+  setTimeout(() => {
+    showPopup(cell.icon, cell.type,
+      `${names[turn]} 的惩罚`, cell.detail || cell.label);
+  }, 300);
+
+  notifyTG(names[turn], result, newPos, cell);
+}
+
+function showPopup(icon, type, title, text) {
+  const typeLabels = { sheep:"小羊惩罚", fox:"福福惩罚", both:"双人互动", move:"移动", special:"特殊事件", start:"", end:"" };
+  document.getElementById("popup-icon").textContent = icon;
+  const pt = document.getElementById("popup-type");
+  pt.textContent = typeLabels[type] || "";
+  pt.className = "popup-type " + type;
+  document.getElementById("popup-title").textContent = title;
+  document.getElementById("popup-text").innerHTML = text;
+  document.getElementById("overlay").classList.add("show");
+}
+
+function closePopup() {
+  document.getElementById("overlay").classList.remove("show");
+  const cell = CELLS[pos[turn]];
+
+  if (cell.move) {
+    const maxI = CELLS.length - 1;
+    pos[turn] = Math.max(0, Math.min(pos[turn] + cell.move, maxI));
+    renderBoard();
+  }
+  if (cell.jump) {
+    const other = turn === 0 ? 1 : 0;
+    pos[turn] = pos[other];
+    renderBoard();
+  }
+  if (cell.reroll) {
+    rolling = false;
+    document.getElementById("dice-btn").disabled = false;
+    renderBoard();
+    return;
+  }
+
+  turn = turn === 0 ? 1 : 0;
+  rolling = false;
+  document.getElementById("dice-btn").disabled = false;
+  renderBoard();
+}
+
+function notifyTG(player, dice, cell, cellData) {
+  fetch('/api/board/notify', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      player, dice, cell,
+      type: cellData.type,
+      label: cellData.label,
+      detail: cellData.detail || ''
+    })
+  }).catch(() => {});
+}
+
+function resetGame() {
+  pos = [0, 0];
+  turn = 0;
+  rolling = false;
+  muteFox = 0;
+  document.getElementById("dice-btn").disabled = false;
+  document.getElementById("dice-face").textContent = "?";
+  renderBoard();
+}
+
+renderBoard();
+</script>
+</body>
+</html>

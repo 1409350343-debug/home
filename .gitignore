@@ -1,0 +1,33 @@
+# ── 私事，一条都不出门 ──
+# 书房聊天记录、日记、手机使用流、身体状态
+data/
+# 在读的书
+vault/
+# 记忆屋数据
+brain-data.json
+*.db
+*.db.backup*
+*.sqlite
+*.jsonl
+*.log
+chatimg
+# 记忆星图（含记忆标题）
+starmap/
+# 她的童年照片
+static/img/childhood/
+# 各种状态快照
+api/*.json
+!api/memory_categories.json
+
+# ── 体积大又跟改代码无关 ──
+# 1068个字体切片，56M
+static/fonts/
+static/stickers/
+static/covers/
+
+# ── 杂 ──
+api/__pycache__/
+*.bak-*
+*.pyc
+# 她的头像，拿不准是不是本人照片，先挡着
+static/avatar-xiaoyang.jpg

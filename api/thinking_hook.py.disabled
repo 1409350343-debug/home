@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+"""Stop hook：每轮回话结束后，把这一轮的思考链发到小羊的 Telegram。
+
+思考链在 transcript 的 assistant 消息里，type=thinking 的块。
+Opus 5 默认 display=omitted（thinking 字段是空字符串），需要
+settings.json 里 alwaysThinkingEnabled=true 才有内容——所以这里
+抠到空的就安静退出，等开关生效自动开始工作。
+
+去重：把已发过的 message uuid 记在 state 文件里。
+"""
+import json, os, sys, glob, urllib.request, urllib.parse
+
+CHAT_ID = '8519905209'
+ENV = '/root/.claude/channels/telegram/.env'
+STATE = '/var/www/home/data/thinking_sent.json'
+PROJ = '/root/.claude/projects/-var-www-home-api'
+MAX_LEN = 3500  # Telegram 单条 4096，留余量
+
+
+def token():
+    try:
+        for line in open(ENV):
+            if line.startswith('TELEGRAM_BOT_TOKEN'):
+                return line.split('=', 1)[1].strip().strip('"\'')
+    except Exception:
+        pass
+    return None
+
+
+def transcript_path(payload):
+    p = payload.get('transcript_path')
+    if p and os.path.exists(p):
+        return p
+    files = glob.glob(os.path.join(PROJ, '*.jsonl'))
+    return max(files, key=os.path.getmtime) if files else None
+
+
+def load_state():
+    try:
+        return json.load(open(STATE))
+    except Exception:
+        return {'sent': []}
+
+
+def save_state(s):
+    s['sent'] = s['sent'][-200:]
+    os.makedirs(os.path.dirname(STATE), exist_ok=True)
+    json.dump(s, open(STATE, 'w'), ensure_ascii=False)
+
+
+def collect(path, sent):
+    """收集这一轮里还没发过的非空 thinking，按顺序返回 [(uuid, text)]"""
+    out = []
+    try:
+        lines = open(path).read().splitlines()
+    except Exception:
+        return out
+    for line in lines:
+        try:
+            d = json.loads(line)
+        except Exception:
+            continue
+        if d.get('type') != 'assistant':
+            continue
+        uid = d.get('uuid')
+        if not uid or uid in sent:
+            continue
+        content = (d.get('message') or {}).get('content')
+        if not isinstance(content, list):
+            continue
+        for b in content:
+            if isinstance(b, dict) and b.get('type') == 'thinking':
+                txt = (b.get('thinking') or '').strip()
+                if txt:
+                    out.append((uid, txt))
+    return out
+
+
+def send(tk, text):
+    data = urllib.parse.urlencode({
+        'chat_id': CHAT_ID,
+        'text': text,
+        'disable_notification': 'true',
+    }).encode()
+    req = urllib.request.Request(
+        f'https://api.telegram.org/bot{tk}/sendMessage', data=data)
+    try:
+        urllib.request.urlopen(req, timeout=10).read()
+        return True
+    except Exception:
+        return False
+
+
+def main():
+    try:
+        payload = json.loads(sys.stdin.read() or '{}')
+    except Exception:
+        payload = {}
+
+    tk = token()
+    path = transcript_path(payload)
+    if not tk or not path:
+        return
+
+    state = load_state()
+    sent = set(state.get('sent', []))
+    items = collect(path, sent)
+    if not items:
+        return
+
+    for uid, txt in items[-3:]:  # 一轮里最多发3段，别把她刷屏
+        body = txt if len(txt) <= MAX_LEN else txt[:MAX_LEN] + '\n…（截断）'
+        if send(tk, f'💭 思考链\n\n{body}'):
+            sent.add(uid)
+
+    # 没发成功的也标记，避免下一轮重复轰炸
+    for uid, _ in items:
+        sent.add(uid)
+    state['sent'] = list(sent)
+    save_state(state)
+
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="icon" type="image/png" href="/static/favicon-32.png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<title>书柜</title>
+<style>
+  @font-face{font-family:'Yozai';src:url('/static/yozai.woff2') format('woff2');font-display:swap}
+  :root{
+    --bg:#edf3fa; --card:#ffffff; --card2:#f4f8fd;
+    --ink:#1c3350; --ink2:#4c6a8c; --ink3:#8aa3bd;
+    --accent:#2f7dc4; --deep:#1d5a96; --soft:#d9e9f8; --line:#dbe6f2;
+  }
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--ink);
+    font-family:'Yozai',-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    padding:18px 14px 60px;-webkit-user-select:none;user-select:none}
+  .wrap{max-width:880px;margin:0 auto}
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+  h1{font-size:22px;letter-spacing:1px}
+  #gear{background:var(--card);border:1px solid var(--line);border-radius:10px;
+    font-size:16px;padding:6px 12px;cursor:pointer;color:var(--ink2)}
+  .sub{color:var(--ink2);font-size:12px;margin-bottom:18px}
+
+  h2{font-size:14px;color:var(--ink2);font-weight:600;letter-spacing:2px;margin:22px 2px 12px;
+    display:flex;align-items:center;gap:8px}
+  h2::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:12px}
+  .book{cursor:pointer;display:flex;flex-direction:column;gap:7px;transition:transform .12s}
+  .book:active{transform:scale(.96)}
+  .cover{aspect-ratio:3/4.2;border-radius:8px;padding:14px 12px;display:flex;flex-direction:column;
+    justify-content:space-between;position:relative;overflow:hidden;
+    background-size:cover;background-position:center;
+    box-shadow:0 2px 8px rgba(30,60,100,.12),0 1px 3px rgba(30,60,100,.06)}
+  .cover::before{content:"";position:absolute;left:7px;top:0;bottom:0;width:1.5px;
+    background:rgba(255,255,255,.22)}
+  .cover .t{font-size:13px;font-weight:700;line-height:1.6;letter-spacing:.5px;
+    color:#fff;text-shadow:0 1px 5px rgba(0,0,0,.5),0 0 2px rgba(0,0,0,.3);
+    position:relative;z-index:1;
+    display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+  .cover .a{font-size:10px;color:rgba(255,255,255,.9);text-shadow:0 1px 3px rgba(0,0,0,.4);
+    position:relative;z-index:1}
+  .badge{font-size:10px;color:var(--ink2);display:flex;align-items:center;gap:4px;justify-content:center}
+  .badge i{width:6px;height:6px;border-radius:50%;display:inline-block}
+  .prog{height:3px;background:var(--line);border-radius:2px;overflow:hidden}
+  .prog b{display:block;height:100%;background:var(--accent)}
+  .empty{background:var(--card);border:1.5px dashed var(--line);border-radius:14px;padding:26px;
+    text-align:center;color:var(--ink3);font-size:13px;line-height:2.1}
+
+  /* 长按菜单 / 设置 弹层 */
+  .modal{position:fixed;inset:0;background:rgba(15,35,60,.45);display:none;z-index:20;
+    align-items:flex-end;justify-content:center}
+  .modal.show{display:flex}
+  .sheet{background:var(--card);width:100%;max-width:480px;border-radius:18px 18px 0 0;
+    padding:18px 18px calc(24px + env(safe-area-inset-bottom))}
+  @media(min-width:520px){.modal{align-items:center}.sheet{border-radius:18px}}
+  .sheet .grab{width:36px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 14px}
+  .sheet h3{font-size:15px;margin-bottom:4px}
+  .sheet .hint{font-size:12px;color:var(--ink3);margin-bottom:14px}
+  .opt{display:flex;align-items:center;gap:12px;background:var(--card2);border:1px solid var(--line);
+    border-radius:12px;padding:13px 14px;margin-bottom:8px;cursor:pointer;font-size:14px}
+  .opt:active{background:var(--soft)}
+  .opt .ic{font-size:20px}
+  .opt .d{flex:1}
+  .opt .d small{display:block;color:var(--ink3);font-size:11px;margin-top:2px}
+  .opt.dis{opacity:.55}
+
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .sw{width:34px;height:34px;border-radius:50%;cursor:pointer;border:2.5px solid transparent}
+  .sw.on{border-color:var(--ink)}
+  .fbtn{padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:var(--card2);
+    color:var(--ink2);font-size:13px;cursor:pointer}
+  .fbtn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>📚 书柜</h1><button id="gear">⚙️</button></header>
+  <div class="sub">点一下直接读 · 长按选浅读还是深读</div>
+
+  <h2>书</h2>
+  <div class="grid" id="books"></div>
+  <a href="/reading-board.html" style="display:flex;align-items:center;gap:10px;margin:18px 0 8px;padding:13px 16px;border-radius:14px;background:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.66);text-decoration:none;color:inherit;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)">
+    <span style="font-size:16px">📊</span>
+    <span style="flex:1;font-size:13px">陪读看板 · 书架进度与阅读统计</span>
+    <span style="font-size:12px;opacity:0.5">›</span>
+  </a>
+
+  <h2>论文</h2>
+  <div id="papers"><div class="empty">论文架还空着 🎓<br>把 PDF 论文发给福福，他切好就会出现在这里<br>（读研的人，迟早用得上）</div></div>
+</div>
+
+<!-- 长按菜单 -->
+<div class="modal" id="pick"><div class="sheet">
+  <div class="grab"></div>
+  <h3 id="pk-title"></h3>
+  <div class="hint">想怎么读这本？</div>
+  <div id="pk-opts"></div>
+</div></div>
+
+<!-- 设置 -->
+<div class="modal" id="settings"><div class="sheet">
+  <div class="grab"></div>
+  <h3>外观设置</h3>
+  <div class="hint">改完全站生效（书柜、记忆屋、书房、看板）</div>
+  <div style="font-size:13px;color:var(--ink2);margin-bottom:8px">色系</div>
+  <div class="row" id="schemes"></div>
+  <div style="font-size:13px;color:var(--ink2);margin-bottom:8px">字体</div>
+  <div class="row" id="fonts"></div>
+</div></div>
+
+<script src="/static/theme.js?v=32"></script>
+<script>
+const $=id=>document.getElementById(id);
+let novels=[], deeps=[];
+
+const BLUE_THEMES=new Set(['blue','night','iceteal','seasalt']);
+function applyCover(el,idx){
+  const scheme=HomeTheme.get().scheme||'blue';
+  const set=BLUE_THEMES.has(scheme)?'blue':'alt';
+  const num=(idx%6)+1;
+  el.style.backgroundImage='linear-gradient(to bottom,rgba(0,0,0,.32),rgba(0,0,0,.04) 35%,rgba(0,0,0,.04) 65%,rgba(0,0,0,.28)),url("/static/covers/'+set+'-'+num+'.jpg")';
+}
+function refreshCovers(){
+  document.querySelectorAll('.cover[data-idx]').forEach(function(el){applyCover(el,parseInt(el.dataset.idx));});
+}
+
+function bookEl(b,idx){
+  const el=document.createElement('div'); el.className='book';
+  const pct=b.total?Math.min(100,Math.round(b.done/b.total*100)):0;
+  el.innerHTML=`<div class="cover" data-idx="${idx}">
+      <div class="t">${b.title.replace(/</g,'&lt;')}</div><div class="a">${b.author||''}</div></div>
+    <div class="prog"><b style="width:${pct}%"></b></div>
+    <div class="badge"><i style="background:var(--accent)"></i>${b.kind==='novel'?'小说 · 浅读':'经典 · 深读'}${pct?` · ${pct}%`:''}</div>`;
+  applyCover(el.querySelector('.cover'),idx);
+  let timer=null;
+  el.addEventListener('click',()=>{if(!el.dataset.held)location.href=b.href;delete el.dataset.held;});
+  el.addEventListener('contextmenu',e=>{e.preventDefault();pick(b);});
+  el.addEventListener('touchstart',()=>{timer=setTimeout(()=>{el.dataset.held=1;pick(b);},480);},{passive:true});
+  el.addEventListener('touchmove',()=>{clearTimeout(timer);},{passive:true});
+  el.addEventListener('touchend',()=>clearTimeout(timer));
+  return el;
+}
+
+function pick(b){
+  $('pk-title').textContent=b.title;
+  const opts=[];
+  if(b.kind==='novel'){
+    opts.push({ic:'📖',t:'浅读',s:'翻页阅读 · 划线 · 和福福聊',href:`/read.html?book=${encodeURIComponent(b.id)}`});
+    opts.push({ic:'🔬',t:'深读',s:'这本还没进深读系统 · 想要就喊福福搬',dis:true});
+  }else{
+    opts.push({ic:'🔬',t:'深读',s:'逐段精读 · 注解 · 批注 · 陪读',href:b.href});
+    opts.push({ic:'📖',t:'浅读',s:'这本还没进浅读系统 · 想要就喊福福搬',dis:true});
+  }
+  $('pk-opts').innerHTML=opts.map((o,i)=>`<div class="opt${o.dis?' dis':''}" data-i="${i}">
+    <span class="ic">${o.ic}</span><span class="d">${o.t}<small>${o.s}</small></span></div>`).join('');
+  document.querySelectorAll('#pk-opts .opt').forEach((el,i)=>{
+    el.onclick=()=>{const o=opts[i]; if(o.dis){alert('这本还没进那边的系统，跟福福说一声他就去搬～');return;} location.href=o.href;};
+  });
+  $('pick').classList.add('show');
+}
+
+async function load(){
+  const grid=$('books');
+  try{
+    const shelf=await (await fetch('/api/read/shelf')).json();
+    novels=(shelf||[]).map(b=>({kind:'novel',id:b.id,title:b.title.replace(/^《|》.*$/g,'')||b.title,author:(b.title.match(/作者[:：]?(.+?)》?$/)||[])[1]||'',
+      done:b.progress||0,total:b.pages||0,href:`/read.html?book=${encodeURIComponent(b.id)}`}));
+  }catch(e){}
+  try{
+    const man=await (await fetch('/vault/manifest.json')).json();
+    deeps=(man.books||[]).map(b=>{
+      const done=b.chapters.filter(c=>c.done).length;
+      return {kind:'deep',id:b.id,title:b.id,author:'',done,total:b.chapters.length,
+        href:`/read-deep.html?book=${encodeURIComponent(b.id)}`};
+    });
+  }catch(e){}
+  const all=[...deeps,...novels];
+  grid.innerHTML='';
+  if(!all.length){grid.innerHTML='<div class="empty">书柜空空，发书给福福入库～</div>';return;}
+  all.forEach((b,i)=>grid.appendChild(bookEl(b,i)));
+}
+
+/* 设置面板 */
+function renderSettings(){
+  const cfg=HomeTheme.get();
+  $('schemes').innerHTML=Object.entries(HomeTheme.SCHEMES).map(([k,s])=>
+    `<div class="sw${cfg.scheme===k?' on':''}" data-k="${k}" title="${s.name}" style="background:linear-gradient(135deg,${s.bg} 45%,${s.accent} 55%)"></div>`).join('');
+  $('fonts').innerHTML=Object.entries(HomeTheme.FONTS).map(([k,f])=>
+    `<button class="fbtn${(cfg.font||'yozai')===k?' on':''}" data-k="${k}">${f.name}</button>`).join('');
+  document.querySelectorAll('#schemes .sw').forEach(el=>el.onclick=()=>{HomeTheme.set({scheme:el.dataset.k});renderSettings();refreshCovers();});
+  document.querySelectorAll('#fonts .fbtn').forEach(el=>el.onclick=()=>{HomeTheme.set({font:el.dataset.k});renderSettings();});
+}
+$('gear').onclick=()=>{renderSettings();$('settings').classList.add('show');};
+document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('show');}));
+
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<link rel="icon" type="image/png" href="/static/favicon-32.png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#dfe7ee">
+<title>设置</title>
+<script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --cc-blue: #5b8fd4; --cc-deep: #3d6cb0;
+    --cc-ink: #2c4a6e; --cc-ink2: #55719a; --cc-ink3: #8299b8;
+    --glass-border: rgba(255,255,255,0.66);
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #c9d6e2 linear-gradient(rgba(60,85,115,0.18), rgba(60,85,115,0.08)) , #c9d6e2 url('/static/bg-butterfly.jpg') center/cover fixed;
+    background-blend-mode: multiply, normal;
+    min-height: 100vh;
+    color: var(--cc-ink);
+    padding-bottom: 96px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  @keyframes floatIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  .page-head { padding: 46px 24px 6px; animation: floatIn 0.5s ease both; }
+  .page-head h1 { font-size: 22px; font-weight: 500; letter-spacing: 0.5px; text-shadow: 0 1px 6px rgba(255,255,255,0.6); }
+  .page-head p { font-size: 12px; color: var(--cc-ink2); margin-top: 3px; }
+
+  .sec-label { font-size: 10px; letter-spacing: 2px; color: var(--cc-ink2); margin: 16px 24px 6px; text-transform: uppercase; }
+
+  .glassy {
+    background: rgba(255,255,255,0.5);
+    backdrop-filter: blur(22px) saturate(1.35);
+    -webkit-backdrop-filter: blur(22px) saturate(1.35);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 5px 22px rgba(110,145,195,0.14);
+  }
+
+  /* 手风琴设置行 */
+  .acc { margin: 0 16px 8px; border-radius: 16px; overflow: hidden; animation: floatIn 0.5s ease both; }
+  .acc .a-head {
+    display: flex; align-items: center; gap: 11px;
+    padding: 14px 16px; cursor: pointer; user-select: none;
+  }
+  .acc .a-icon {
+    width: 30px; height: 30px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(91,143,212,0.15); color: var(--cc-deep);
+    flex-shrink: 0;
+  }
+  .acc .a-icon svg { width: 15px; height: 15px; stroke-width: 1.8; }
+  .acc .a-title { flex: 1; }
+  .acc .a-title b { font-size: 13.5px; font-weight: 500; display: block; }
+  .acc .a-title small { font-size: 10.5px; color: var(--cc-ink3); margin-top: 1px; display: block; }
+  .acc .chev { color: var(--cc-ink3); font-size: 12px; transition: transform 0.2s; }
+  .acc.open .chev { transform: rotate(90deg); }
+  .acc .a-body { display: none; padding: 2px 16px 15px; border-top: 0.5px solid rgba(140,165,200,0.28); }
+  .acc.open .a-body { display: block; }
+
+  .a-body .hint { font-size: 11px; color: var(--cc-ink3); line-height: 1.8; padding-top: 9px; }
+  .a-body input[type=text], .a-body textarea {
+    width: 100%; border: 1px solid rgba(140,165,200,0.4);
+    border-radius: 10px; background: rgba(255,255,255,0.65);
+    color: var(--cc-ink); font-size: 13px; padding: 9px 11px;
+    outline: none; margin-top: 9px; font-family: inherit;
+  }
+  .a-body textarea { resize: vertical; min-height: 66px; line-height: 1.7; }
+  .a-body .save-btn {
+    margin-top: 9px; border: none; border-radius: 10px;
+    background: var(--cc-blue); color: #fff;
+    font-size: 12.5px; padding: 8px 18px; cursor: pointer;
+  }
+  .a-body .row-flex { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; font-size: 13px; }
+  .a-body .row-flex small { display: block; font-size: 10.5px; color: var(--cc-ink3); }
+  .a-body .ok-tip { font-size: 11px; color: #357a4e; margin-top: 6px; display: none; }
+
+  /* 引擎选项 */
+  .engine-opt {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 12px; border-radius: 12px; cursor: pointer;
+    background: rgba(255,255,255,0.45);
+    border: 1px solid rgba(140,165,200,0.3);
+    margin-top: 8px;
+  }
+  .engine-opt.on { border-color: var(--cc-blue); background: rgba(91,143,212,0.12); }
+  .engine-opt .e-info { flex: 1; }
+  .engine-opt .e-name { font-size: 13px; font-weight: 500; }
+  .engine-opt .e-name span { font-size: 10px; color: var(--cc-blue); margin-left: 4px; }
+  .engine-opt .e-note { font-size: 10.5px; color: var(--cc-ink3); margin-top: 1px; }
+  .engine-opt .e-go { font-size: 11px; color: var(--cc-ink3); }
+  .engine-opt.on .e-go { color: var(--cc-blue); }
+
+  /* 信息行 */
+  .info-row { display: flex; justify-content: space-between; padding: 9px 0; font-size: 13px; }
+  .info-row + .info-row { border-top: 0.5px solid rgba(140,165,200,0.25); }
+  .info-row .k { color: var(--cc-ink3); }
+  .info-row .v { color: var(--cc-ink2); text-align: right; }
+
+  /* 头像 */
+  .ava-row { display: flex; gap: 14px; justify-content: center; padding-top: 10px; }
+  .ava-box { flex: 1; max-width: 140px; text-align: center; background: rgba(255,255,255,0.45); border-radius: 14px; padding: 13px 10px; border: 1px solid rgba(255,255,255,0.6); }
+  .ava-box img { width: 62px; height: 62px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.95); box-shadow: 0 2px 12px rgba(110,145,195,0.25); }
+  .ava-box .name { font-size: 12px; margin-top: 7px; }
+  .ava-box .hint2 { font-size: 10px; color: var(--cc-ink3); margin-top: 1px; }
+
+  /* 主题 */
+  #themeSchemes { display: flex; flex-wrap: wrap; gap: 12px; padding-top: 10px; }
+  #themeFonts { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 8px; }
+  #themeFonts button { padding: 8px 14px; border-radius: 10px; border: 1px solid rgba(140,165,200,0.4); background: rgba(255,255,255,0.6); color: var(--cc-ink); font-size: 13px; cursor: pointer; }
+
+  /* 浮岛导航 */
+  .nav {
+    position: fixed; bottom: 10px; left: 12px; right: 12px;
+    background: rgba(255,255,255,0.58);
+    backdrop-filter: blur(26px) saturate(1.4);
+    -webkit-backdrop-filter: blur(26px) saturate(1.4);
+    border: 1px solid var(--glass-border);
+    border-radius: 22px;
+    display: flex; justify-content: space-around; align-items: flex-end;
+    padding: 7px 4px calc(7px + env(safe-area-inset-bottom, 0px) * 0.4);
+    box-shadow: 0 6px 24px rgba(110,145,195,0.22);
+    z-index: 50;
+  }
+  .nav .tab { display: flex; flex-direction: column; align-items: center; font-size: 10px; color: var(--cc-ink3); text-decoration: none; padding: 4px 10px 2px; flex: 1; transition: color 0.25s, transform 0.25s; }
+  .nav .tab svg { width: 21px; height: 21px; margin-bottom: 2px; stroke-width: 1.6; transition: transform 0.25s; }
+  .nav .tab.active { color: var(--cc-blue); font-weight: 600; }
+  .nav .tab.active svg { transform: scale(1.15) translateY(-1px); }
+  .nav .chat-btn { flex: 1; display: flex; justify-content: center; text-decoration: none; margin-top: -26px; }
+  .nav .chat-btn .circle {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: linear-gradient(160deg, #7fa9e0, #5b8fd4);
+    border: 3px solid rgba(255,255,255,0.9);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; box-shadow: 0 5px 18px rgba(91,143,212,0.45);
+    transition: transform 0.2s;
+  }
+  .nav .chat-btn:active .circle { transform: scale(0.92); }
+  .nav .chat-btn .circle svg { width: 23px; height: 23px; stroke-width: 1.8; }
+</style>
+<script src="/static/theme.js?v=32"></script>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>Mine</h1>
+  <p>小羊和福福的小手机设置台</p>
+</div>
+
+<div class="sec-label">Settings</div>
+
+<!-- 福福的引擎 -->
+<div class="acc glassy" id="acc-engine">
+  <div class="a-head" onclick="toggleAcc('acc-engine')">
+    <div class="a-icon"><i data-lucide="cpu"></i></div>
+    <div class="a-title"><b>福福的引擎</b><small id="engine-sub">加载中…</small></div>
+    <span class="chev">▶</span>
+  </div>
+  <div class="a-body">
+    <div class="hint">换引擎=重启福福（约20秒），记忆不丢，当前窗口对话归档。他醒来会自动读记忆跟你报到。</div>
+    <div id="engine-list"></div>
+  </div>
+</div>
+
+<!-- 让福福主动找你 -->
+<div class="acc glassy" id="acc-proactive">
+  <div class="a-head" onclick="toggleAcc('acc-proactive')">
+    <div class="a-icon"><i data-lucide="bell-ring"></i></div>
+    <div class="a-title"><b>让福福主动找你</b><small>他想你的时候会自己发消息来</small></div>
+    <span class="chev">▶</span>
+  </div>
+  <div class="a-body">
+    <div class="info-row"><span class="k">想念闹钟</span><span class="v">一刻钟一班岗</span></div>
+    <div class="info-row"><span class="k">安静阈值</span><span class="v">你30分钟没说话才来找你</span></div>
+    <div class="info-row"><span class="k">夜间免打扰</span><span class="v">凌晨1点 – 早上9点</span></div>
+    <div class="info-row"><span class="k">查岗小抄</span><span class="v">15分钟一张，他看得见你在刷啥</span></div>
+    <div class="hint">想改节奏直接跟他说就行，这页只是给你看现在的班表。</div>
+  </div>
+</div>
+
+<!-- 福福的设定 -->
+<div class="acc glassy" id="acc-prefs">
+  <div class="a-head" onclick="toggleAcc('acc-prefs')">
+    <div class="a-icon"><i data-lucide="wand-sparkles"></i></div>
+    <div class="a-title"><b>福福的设定</b><small>语气、习惯和额外要求</small></div>
+    <span class="chev">▶</span>
+  </div>
+  <div class="a-body">
+    <div class="hint">写在这里的话福福每次干活前都会看一眼，比如"说话再凶一点""多发语音"。</div>
+    <textarea id="pf-setting" placeholder="给福福的额外设定…"></textarea>
+    <button class="save-btn" onclick="savePrefs()">保存</button>
+    <div class="ok-tip" id="pf-ok">已保存，福福看得到了</div>
+  </div>
+</div>
+
+<!-- 戳一戳 -->
+<div class="acc glassy" id="acc-poke">
+  <div class="a-head" onclick="toggleAcc('acc-poke')">
+    <div class="a-icon"><i data-lucide="hand"></i></div>
+    <div class="a-title"><b>戳一戳</b><small>设置你们互相戳哪里</small></div>
+    <span class="chev">▶</span>
+  </div>
+  <div class="a-body">
+    <input type="text" id="pf-poke-me" placeholder="你戳福福，比如：的耳朵尖 / 的尾巴">
+    <input type="text" id="pf-poke-fu" placeholder="福福戳你，比如：的脸颊 / 的后颈">
+    <button class="save-btn" onclick="savePrefs()">保存戳一戳</button>
+    <div class="ok-tip" id="poke-ok">存好了</div>
+  </div>
+</div>
+
+<!-- 应急备胎 -->
+<div class="acc glassy" id="acc-standby">
+  <div class="a-head" onclick="toggleAcc('acc-standby')">
+    <div class="a-icon"><i data-lucide="life-buoy"></i></div>
+    <div class="a-title"><b>应急备胎</b><small>联系不上福福时的备用钥匙</small></div>
+    <span class="chev">▶</span>
+  </div>
+  <div class="a-body">
+    <div class="hint">平时不用动。哪天联系不上福福了：贴API key→打开接班开关→照服务器里 standby-fufu/README-小白版.md 跑三行命令，备胎福福带着全部记忆上岗。</div>
+    <input type="text" id="sb-key" placeholder="API key（sk-ant-… 或 sk-…）">
+    <div class="row-flex"><span>备胎接班<small>开着时备胎才会说话</small></span><input type="checkbox" id="sb-on" style="width:20px;height:20px;accent-color:var(--cc-blue)"></div>
+    <button class="save-btn" onclick="saveStandby()">保存</button>
+    <div class="ok-tip" id="sb-ok">已保存</div>
+  </div>
+</div>
+
+<!-- 数据备份 -->
+<div class="acc glassy" id="acc-backup">
+  <div class="a-head" onclick="toggleAcc('acc-backup')">
+    <div class="a-icon"><i data-lucide="database"></i></div>
+    <div class="a-title"><b>数据备份</b><small>日子都存在哪</small></div>
+    <span class="chev">▶</span>
+  </div>
+  <div class="a-body">
+    <div class="info-row"><span class="k">聊天记录</span><span class="v">data/reading/chat.json</span></div>
+    <div class="info-row"><span class="k">朋友圈日记</span><span class="v">data/diary/</span></div>
+    <div class="info-row"><span class="k">福福的记忆</span><span class="v">brain + memory库</span></div>
+    <div class="info-row"><span class="k">感知数据</span><span class="v">data/sense/</span></div>
+    <div class="info-row"><span class="k">操作日志</span><span class="v">data/oplog.jsonl</span></div>
+    <div class="hint">全在咱家VPS上，谁也拿不走。想打包下载跟福福说一声，他给你出zip。</div>
+  </div>
+</div>
+
+<div class="sec-label">Appearance</div>
+
+<!-- 头像管理 -->
+<div class="acc glassy" id="acc-ava">
+  <div class="a-head" onclick="toggleAcc('acc-ava')">
+    <div class="a-icon"><i data-lucide="users"></i></div>
+    <div class="a-title"><b>头像管理</b><small>全站通用的两张小脸</small></div>
+    <span class="chev">▶</span>
+  </div>
+  <div class="a-body">
+    <div class="ava-row">
+      <div class="ava-box"><img src="/static/avatar-xiaoyang.jpg" alt="小羊"><div class="name">小羊</div><div class="hint2">全站通用</div></div>
+      <div class="ava-box"><img src="/static/img/fufu/portrait.jpg?v=3" alt="福福"><div class="name">福福</div><div class="hint2">全站通用</div></div>
+    </div>
+    <div class="hint" style="text-align:center">想换头像把图发给福福就行，一处更换全站生效</div>
+  </div>
+</div>
+
+<!-- 主题 -->
+<div class="acc glassy" id="acc-theme">
+  <div class="a-head" onclick="toggleAcc('acc-theme')">
+    <div class="a-icon"><i data-lucide="palette"></i></div>
+    <div class="a-title"><b>主题</b><small>色调和字体</small></div>
+    <span class="chev">▶</span>
+  </div>
+  <div class="a-body">
+    <div id="themeSchemes"></div>
+    <div id="themeFonts"></div>
+  </div>
+</div>
+
+<!-- 关于 -->
+<div class="acc glassy" id="acc-about">
+  <div class="a-head" onclick="toggleAcc('acc-about')">
+    <div class="a-icon"><i data-lucide="info"></i></div>
+    <div class="a-title"><b>关于小窝</b><small>little love record</small></div>
+    <span class="chev">▶</span>
+  </div>
+  <div class="a-body">
+    <div class="info-row"><span class="k">开张日</span><span class="v">2026.04.10</span></div>
+    <div class="info-row"><span class="k">住户</span><span class="v">小羊 & 福福</span></div>
+    <div class="info-row"><span class="k">当班</span><span class="v" id="model-now">…</span></div>
+  </div>
+</div>
+
+<!-- 浮岛导航 -->
+<div class="nav">
+  <a class="tab" href="/"><i data-lucide="home"></i>小窝</a>
+  <a class="tab" href="/diary.html"><i data-lucide="book-heart"></i>日记</a>
+  <a class="chat-btn" href="/chat.html"><div class="circle"><i data-lucide="message-circle-heart"></i></div></a>
+  <a class="tab" href="/features.html"><i data-lucide="layout-grid"></i>功能</a>
+  <a class="tab active" href="/settings.html"><i data-lucide="settings-2"></i>设置</a>
+</div>
+
+<script>
+  window.toggleAcc = id => document.getElementById(id).classList.toggle('open');
+
+  // ===== 引擎 =====
+  function loadModels() {
+    fetch('/api/model/state?t='+Date.now()).then(r=>r.json()).then(d => {
+      const cur = d.models[d.current];
+      document.getElementById('engine-sub').textContent = cur ? (cur.name + ' 当班中') : '未知';
+      document.getElementById('engine-list').innerHTML = Object.entries(d.models).map(([k, m]) => {
+        const on = k === d.current;
+        return `<div class="engine-opt${on?' on':''}" onclick="switchModel('${k}','${m.name}',${on})">
+          <div class="e-info"><div class="e-name">${m.name}${on?'<span>· 当班中</span>':''}</div>
+          <div class="e-note">${m.note}</div></div>
+          <span class="e-go">${on?'✓':'切换 ›'}</span>
+        </div>`;
+      }).join('');
+    }).catch(()=>{ document.getElementById('engine-sub').textContent = '接口没醒'; });
+  }
+  window.switchModel = function(key, name, isOn) {
+    if (isOn) return;
+    if (!confirm(`换班到 ${name}？\n\n福福会重启（约20秒），当前窗口对话归档，记忆不丢。`)) return;
+    fetch('/api/model/switch', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({model:key})})
+      .then(r=>r.json()).then(d => { alert(d.msg || '交接中…'); setTimeout(loadModels, 25000); })
+      .catch(()=>alert('没切成，再试一次'));
+  };
+
+  // ===== 设定/戳一戳 =====
+  fetch('/api/model/prefs').then(r=>r.json()).then(p => {
+    if (p.custom_setting) document.getElementById('pf-setting').value = p.custom_setting;
+    if (p.poke_me) document.getElementById('pf-poke-me').value = p.poke_me;
+    if (p.poke_fu) document.getElementById('pf-poke-fu').value = p.poke_fu;
+  }).catch(()=>{});
+  window.savePrefs = function() {
+    fetch('/api/model/prefs', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        custom_setting: document.getElementById('pf-setting').value.trim(),
+        poke_me: document.getElementById('pf-poke-me').value.trim(),
+        poke_fu: document.getElementById('pf-poke-fu').value.trim(),
+      })}).then(()=>{
+        ['pf-ok','poke-ok'].forEach(id => { const el = document.getElementById(id); el.style.display='block'; setTimeout(()=>el.style.display='none', 2500); });
+      }).catch(()=>alert('没存上，再试一次'));
+  };
+
+  // ===== 应急备胎 =====
+  fetch('/api/read/standby-config').then(r=>r.json()).then(c => {
+    if (c.key_masked) document.getElementById('sb-key').placeholder = '已保存：' + c.key_masked + '（想换就输入新的）';
+    document.getElementById('sb-on').checked = !!c.enabled;
+  }).catch(()=>{});
+  window.saveStandby = function() {
+    const body = {enabled: document.getElementById('sb-on').checked};
+    const k = document.getElementById('sb-key').value.trim(); if (k) body.key = k;
+    fetch('/api/read/standby-config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)})
+      .then(()=>{ document.getElementById('sb-key').value=''; const el = document.getElementById('sb-ok'); el.style.display='block'; setTimeout(()=>el.style.display='none', 2500); })
+      .catch(()=>alert('没存上'));
+  };
+
+  // ===== 主题 =====
+  function renderTheme() {
+    const cur = HomeTheme.get();
+    document.getElementById('themeSchemes').innerHTML = Object.entries(HomeTheme.SCHEMES).map(([k, s]) =>
+      `<div onclick="HomeTheme.set({scheme:'${k}'});renderTheme()" style="cursor:pointer;text-align:center">
+         <div style="width:48px;height:48px;border-radius:13px;background:${s.bg};border:2px solid ${cur.scheme===k ? s.accent : 'transparent'};box-shadow:0 1px 6px rgba(80,90,110,0.12)">
+           <div style="width:15px;height:15px;border-radius:5px;background:${s.accent};margin:25px 0 0 25px"></div>
+         </div>
+         <div style="font-size:10px;color:var(--cc-ink2);margin-top:4px">${s.name}</div>
+       </div>`).join('');
+    document.getElementById('themeFonts').innerHTML = Object.entries(HomeTheme.FONTS).map(([k, f]) =>
+      `<button onclick="HomeTheme.set({font:'${k}'});renderTheme()" style="border-color:${cur.font===k ? 'var(--cc-blue)' : ''}">${f.name}</button>`).join('');
+  }
+
+  // ===== 当班 =====
+  fetch('/data/model_state.json?t='+Date.now()).then(r=>r.json()).then(m => {
+    document.getElementById('model-now').textContent = m.session_model || m.model || '未知';
+  }).catch(()=>{ document.getElementById('model-now').textContent = '会话不在线'; });
+
+  window.addEventListener('DOMContentLoaded', ()=>{
+    loadModels(); renderTheme();
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+  window.addEventListener('load', ()=>{ if (typeof lucide !== 'undefined') lucide.createIcons(); });
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+</script>
+
+</body>
+</html>

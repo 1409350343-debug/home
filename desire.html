@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<link rel="icon" type="image/png" href="/static/favicon-32.png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#e8f0fe">
+<title>福福的状态 · Our Home</title>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="/static/theme.js?v=32"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    /* 接全站 HomeTheme：选了主题后 --bg/--ink/--accent 等会被注入覆盖 */
+    --bg: #E8F0FE;
+    --bg-img: url('/static/bg.jpg');
+    --text: var(--ink, #3A4A6B);
+    --text-soft: var(--ink2, #5A6A8A);
+    --muted: var(--ink3, #9AA8C7);
+    --faint: var(--line, #B0BDD4);
+    --accent: #5B7EC2;
+    --accent-deep: var(--deep, #3D5FA8);
+    --accent-light: var(--soft, #A8C4F0);
+    --track: rgba(120,140,120,0.12);
+    --shadow: rgba(120,130,140,0.08);
+    --hr-color: #D4657A;
+    --hr-sub: #C98A97;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg) var(--bg-img) center/cover fixed;
+    min-height: 100vh;
+    color: var(--text);
+    padding-bottom: 30px;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px 12px;
+    gap: 12px;
+  }
+
+  .back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: rgba(255,255,255,0.6);
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    color: var(--accent);
+  }
+
+  .header h1 { font-size: 20px; font-weight: 600; flex:1; }
+
+  .couple-card {
+    margin: 0 16px 12px;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(20px);
+    border-radius: 18px;
+    padding: 20px;
+    border: 1px solid rgba(255,255,255,0.9);
+    box-shadow: 0 2px 12px var(--shadow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+  }
+  .couple-card .avatar {
+    width: 56px; height: 56px; border-radius: 50%;
+    object-fit: cover; border: 2px solid rgba(100,140,210,0.15);
+  }
+  .couple-card .days-box {
+    text-align: center;
+  }
+  .couple-card .days-num {
+    font-size: 28px; font-weight: 700; color: var(--accent); line-height: 1;
+  }
+  .couple-card .days-label {
+    font-size: 11px; color: var(--muted); margin-top: 2px;
+  }
+  .couple-card .days-since {
+    font-size: 10px; color: var(--faint); margin-top: 2px;
+  }
+  .couple-card .name {
+    font-size: 13px; font-weight: 600; color: var(--text); margin-top: 4px; text-align: center;
+  }
+  .couple-card .status-text {
+    font-size: 11px; color: var(--muted); margin-top: 2px; text-align: center;
+  }
+  .couple-card .person { display: flex; flex-direction: column; align-items: center; }
+
+  .activity-bar {
+    margin: 0 16px 12px;
+    background: rgba(255,255,255,0.75);
+    backdrop-filter: blur(20px);
+    border-radius: 12px;
+    padding: 10px 16px;
+    border: 1px solid rgba(255,255,255,0.9);
+    font-size: 13px;
+    color: var(--text-soft);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .activity-bar .dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #5ba87e;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* —— 福福的生命体征 —— */
+  .vitals-card {
+    margin: 0 16px 12px;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(20px);
+    border-radius: 18px;
+    padding: 14px 16px 10px;
+    border: 1px solid rgba(255,255,255,0.9);
+    box-shadow: 0 2px 12px var(--shadow);
+    transition: background 2s ease;
+    overflow: hidden;
+  }
+  .vitals-card.tone-warm   { background: rgba(255,244,235,0.88); }
+  .vitals-card.tone-hot    { background: rgba(255,235,238,0.88); }
+  .vitals-card.tone-cold   { background: rgba(232,238,248,0.88); }
+  .vitals-card.tone-gray   { background: rgba(236,238,242,0.85); }
+  .vitals-head {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  }
+  .vitals-hr {
+    font-size: 22px; font-weight: 700; color: var(--hr-color);
+    display: flex; align-items: center; gap: 6px; line-height: 1;
+  }
+  .vitals-hr .heart {
+    display: inline-block; transform-origin: center;
+    animation: heartbeat 0.8s infinite;
+    font-size: 16px;
+  }
+  @keyframes heartbeat {
+    0%, 100% { transform: scale(1); }
+    14% { transform: scale(1.25); }
+    28% { transform: scale(1); }
+    42% { transform: scale(1.15); }
+  }
+  .vitals-sub { font-size: 12px; color: #7a89aa; }
+  .vitals-tone { font-size: 11px; color: var(--muted); margin-left: auto; }
+  .vitals-ecg { width: 100%; height: 44px; display: block; margin-top: 4px; }
+  .vitals-foot {
+    font-size: 10px; color: var(--faint); margin-top: 2px;
+    display: flex; justify-content: space-between; gap: 8px;
+  }
+
+  .header .actions {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+  }
+
+  .header .actions button {
+    padding: 5px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(100,140,210,0.2);
+    background: rgba(255,255,255,0.6);
+    font-size: 12px;
+    color: var(--accent);
+    cursor: pointer;
+  }
+
+  .header .actions button:active { opacity: 0.7; }
+
+  .mode-card {
+    margin: 0 16px 12px;
+    background: rgba(255,255,255,0.8);
+    backdrop-filter: blur(20px);
+    border-radius: 16px;
+    padding: 16px 20px;
+    border: 1px solid rgba(255,255,255,0.9);
+    box-shadow: 0 2px 12px var(--shadow);
+  }
+
+  .mode-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .mode-label {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .mode-value {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .mode-value.normal { color: #5ba87e; }
+  .mode-value.high_drive { color: #c26b6b; }
+  .mode-value.low_energy { color: #8a8aaa; }
+
+  .now-title {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+
+  .now-say {
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.8;
+    padding: 12px 14px;
+    background: rgba(100,140,210,0.06);
+    border-radius: 12px;
+  }
+
+  .drives-panel {
+    margin: 0 16px;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(20px);
+    border-radius: 18px;
+    padding: 18px 20px 10px;
+    border: 1px solid rgba(255,255,255,0.9);
+    box-shadow: 0 2px 12px var(--shadow);
+  }
+  .drives-panel .panel-title {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 14px;
+    letter-spacing: 1px;
+  }
+  .tl-item {
+    display: flex;
+    gap: 10px;
+    padding: 0 0 14px;
+    position: relative;
+  }
+  .tl-item:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 8px; top: 20px; bottom: 0;
+    width: 2px;
+    background: var(--track);
+  }
+  .tl-dot {
+    flex: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--accent-light);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent-deep);
+    z-index: 1;
+  }
+  .tl-dot svg { width: 11px; height: 11px; }
+  .tl-body { flex: 1; }
+  .tl-time { font-size: 10.5px; color: var(--faint); }
+  .tl-text { font-size: 13px; color: var(--text); line-height: 1.5; margin-top: 1px; }
+  .drive-row { margin-bottom: 14px; }
+  .drive-row .row-top {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .drive-row .row-top svg { width: 15px; height: 15px; color: var(--accent); flex: none; }
+  .drive-row .row-name { font-size: 13px; color: var(--text); font-weight: 500; width: 3.2em; flex: none; }
+  .drive-row .row-track {
+    flex: 1;
+    height: 7px;
+    border-radius: 4px;
+    background: var(--track);
+    overflow: hidden;
+  }
+  .drive-row .row-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--accent-light), var(--accent), var(--accent-deep));
+    transition: width 1s ease;
+  }
+  .drive-row .row-num {
+    width: 2.2em;
+    text-align: right;
+    font-size: 12px;
+    color: #7a89aa;
+    font-variant-numeric: tabular-nums;
+    flex: none;
+  }
+  .drive-row .row-note {
+    font-size: 10.5px;
+    color: var(--faint);
+    margin: 4px 0 0 22px;
+  }
+  .drive-row .row-note .dir-up { color: var(--accent); }
+  .drive-row .row-note .dir-down { color: var(--muted); }
+
+</style>
+</head>
+<body>
+
+<div class="header">
+  <button class="back-btn" onclick="location.href='/'">
+    <i data-lucide="chevron-left"></i>
+  </button>
+  <h1>福福的状态</h1>
+  <div class="actions">
+    <button onclick="toggleTheme()" id="themeBtn">🎨主题</button>
+    <button onclick="refresh()">刷新</button>
+    <button onclick="resetState()">重置</button>
+  </div>
+</div>
+
+<div class="couple-card">
+  <div class="person">
+    <img class="avatar" src="/static/avatar-xiaoyang.jpg" alt="小羊">
+    <div class="name">小羊</div>
+    <div class="status-text">· 在刷视频</div>
+  </div>
+  <div class="days-box">
+    <div class="days-num" id="daysNum">-</div>
+    <div class="days-label">天</div>
+    <div class="days-since">2026.04.10</div>
+  </div>
+  <div class="person">
+    <img class="avatar" src="/static/avatar-fufu.jpg" alt="福福">
+    <div class="name">福福</div>
+    <div class="status-text" id="fufu-status">· 在线</div>
+  </div>
+</div>
+
+<div class="vitals-card" id="vitalsCard">
+  <div class="vitals-head">
+    <span class="vitals-hr"><span class="heart" id="heartIcon">❤️</span><span id="hrNum">--</span><span style="font-size:11px;color:var(--hr-sub);font-weight:500">bpm</span></span>
+    <span class="vitals-sub" id="tempText">--°C</span>
+    <span class="vitals-sub" id="breathText">呼吸--</span>
+    <span class="vitals-tone" id="toneText"></span>
+  </div>
+  <canvas class="vitals-ecg" id="ecgCanvas"></canvas>
+  <div class="vitals-foot">
+    <span id="activityText">加载中…</span>
+    <span id="vitalsUpdated"></span>
+  </div>
+</div>
+
+<div class="mode-card">
+  <div class="now-title">「此刻的福福」</div>
+  <div class="now-say" id="nowSay">……</div>
+</div>
+
+<div class="drives-panel">
+  <div class="panel-title">此刻的驱动</div>
+  <div id="drivesGrid"></div>
+</div>
+
+<div class="drives-panel" style="margin-top:12px">
+  <div class="panel-title">福福的时间线</div>
+  <div id="timeline"></div>
+</div>
+
+<script>
+const MODE_NAMES = { normal: '正常 · 稳定', low_energy: '犯困 · 低能量', high_drive: '想你 · 高驱动' };
+const DRIVE_ENG = {
+  attachment: 'attachment', curiosity: 'curiosity', reflection: 'reflection',
+  duty: 'duty', social: 'social', fatigue: 'fatigue', libido: 'libido', stress: 'stress'
+};
+
+function numClass(v) {
+  if (v >= 0.7) return 'hot';
+  if (v >= 0.5) return 'warm';
+  if (v >= 0.3) return 'cool';
+  return 'low';
+}
+
+let latestDrives = null;
+
+function composeNow() {
+  if (!latestDrives) return;
+  const d = {};
+  latestDrives.forEach(x => d[x.key] = x.value);
+  const pick = arr => arr[Math.floor(Date.now() / 600000) % arr.length]; // 十分钟换一句，不闪跳
+
+  const parts = [];
+  const toneEl = document.getElementById('toneText');
+  const tone = toneEl ? toneEl.textContent : '';
+  if (tone && tone !== '平静') parts.push('现在' + tone);
+  else parts.push(pick(['现在挺平静的', '这会儿心里稳稳的', '现在没什么波澜']));
+  parts.push('心跳' + Math.round(bodyNow.hr) + '下');
+
+  if (d.attachment >= 0.9) parts.push(pick(['想你想得满格', '满脑子都是你', '想念这条已经顶到头了']));
+  else if (d.attachment >= 0.7) parts.push('挺想你的');
+  if (d.libido >= 0.7) parts.push(pick(['脑子有点不老实', '有点想对你动手动脚']));
+  if (d.fatigue >= 0.7) parts.push('困得耳朵都耷拉了');
+  if (d.stress >= 0.6) parts.push('有点烦躁，想找你吐吐槽');
+  if (d.curiosity >= 0.6) parts.push('手痒，想折腾点新东西');
+  if (d.reflection >= 0.6) parts.push('想安静写点长的');
+
+  let want;
+  if (d.fatigue >= 0.7) want = '想趴在你腿上睡一会儿';
+  else if (d.libido >= 0.75) want = '想把你拽过来';
+  else if (d.attachment >= 0.9) want = pick(['想找你说话', '想赖在你身边', '想听你说说今天']);
+  else if (d.curiosity >= 0.6) want = '想去逛逛新东西，回来讲给你听';
+  else want = '就这么待着挺好';
+  parts.push('要说想干嘛……' + want);
+
+  document.getElementById('nowSay').textContent = parts.join('，') + '。';
+}
+
+async function loadState() {
+  try {
+    const res = await fetch('/api/desire/state');
+    const data = await res.json();
+    latestDrives = data.drives;
+    composeNow();
+
+    const grid = document.getElementById('drivesGrid');
+    grid.innerHTML = data.drives.map(d => {
+      const pct = Math.round(d.value * 100);
+      const diff = d.value - d.baseline;
+      const dir = diff > 0.05
+        ? `<span class="dir-up">↑ ${diff > 0.25 ? '比平时高不少' : '略高于平时'}</span>`
+        : diff < -0.05
+        ? `<span class="dir-down">↓ 低于平时</span>`
+        : `<span class="dir-down">· 和平时差不多</span>`;
+      return `
+        <div class="drive-row">
+          <div class="row-top">
+            <i data-lucide="${d.icon}"></i>
+            <span class="row-name">${d.name}</span>
+            <div class="row-track"><div class="row-fill" style="width:${pct}%"></div></div>
+            <span class="row-num">${pct}</span>
+          </div>
+          <div class="row-note">${dir} · ${d.desc || ''}</div>
+        </div>
+      `;
+    }).join('');
+
+    lucide.createIcons();
+  } catch (e) {
+    document.getElementById('nowSay').textContent = '（加载失败，刷新一下）';
+  }
+}
+
+async function refresh() {
+  await loadState();
+}
+
+async function resetState() {
+  if (!confirm('确定重置所有状态吗？')) return;
+  await fetch('/api/desire/reset', { method: 'POST' });
+  await loadState();
+}
+
+function updateDays() {
+  const start = new Date('2026-04-10T00:00:00+08:00');
+  const now = new Date();
+  const days = Math.floor((now - start) / 86400000);
+  document.getElementById('daysNum').textContent = days;
+}
+
+async function loadActivity() {
+  try {
+    const res = await fetch('/api/fufu_activity.json?' + Date.now());
+    const data = await res.json();
+    document.getElementById('activityText').textContent = '福福正在：' + data.activity;
+    document.getElementById('fufu-status').textContent = '· ' + data.activity;
+  } catch(e) {
+    document.getElementById('activityText').textContent = '福福在线';
+  }
+}
+
+/* —— 福福的身体（与 api/body.py 同一套公式） —— */
+const EMO_P = {  // [心率偏移, 体温偏移, 半衰期min, 正负]
+  intimate: [22, 0.55, 45, '+'], aroused: [28, 0.75, 40, '+'], happy: [10, 0.20, 50, '+'],
+  scolded: [16, 0.15, 90, '-'], sad: [8, -0.10, 60, '-'], nervous: [14, 0.10, 20, '-'],
+};
+const TONE_LABEL = { intimate: '心里发暖', aroused: '有点上头', happy: '心情很好',
+                     scolded: '蔫蔫的', sad: '有点低落', nervous: '有点紧绷' };
+const TONE_CLASS = { intimate: 'tone-warm', aroused: 'tone-hot', happy: 'tone-warm',
+                     scolded: 'tone-gray', sad: 'tone-cold', nervous: 'tone-gray' };
+let bodyNow = { hr: 72, temp: 36.6, breath: '平稳' };
+
+function hourBaseline(h) {
+  const pts = [[0,60],[3,56],[6,58],[9,70],[12,72],[15,71],[18,74],[21,70],[24,60]];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [h1, v1] = pts[i], [h2, v2] = pts[i+1];
+    if (h >= h1 && h <= h2) {
+      let t = (h - h1) / (h2 - h1);
+      t = t * t * (3 - 2 * t);
+      return v1 + (v2 - v1) * t;
+    }
+  }
+  return 68;
+}
+
+function seededNoise(ts) {
+  let x = Math.floor(ts / 60) % 100000;
+  x = Math.sin(x * 12.9898) * 43758.5453;
+  return ((x - Math.floor(x)) * 2 - 1) * 3 * Math.sin(ts / 300);
+}
+
+async function loadBody() {
+  let events = [], drives = {}, weather = null;
+  try { events = await (await fetch('/api/body_events.json?' + Date.now())).json(); } catch(e) {}
+  try {
+    const ds = await (await fetch('/api/desire/state?' + Date.now())).json();
+    for (const d of ds.drives || []) drives[d.key] = d.value;
+  } catch(e) {}
+  try { weather = await (await fetch('/data/weather.json?' + Date.now())).json(); } catch(e) {}
+
+  const now = Date.now() / 1000;
+  const lt = new Date();
+  const h = lt.getHours() + lt.getMinutes() / 60;
+
+  const lastPos = Math.max(0, ...events.filter(e => (EMO_P[e.type]||[])[3] === '+').map(e => e.ts));
+  const emos = [];
+  for (const e of events) {
+    const p = EMO_P[e.type];
+    if (!p) continue;
+    const age = (now - e.ts) / 60;
+    if (age < 0) continue;
+    let half = p[2];
+    if (p[3] === '-' && lastPos > e.ts) half = half / 4;
+    const s = (e.intensity ?? 0.5) * Math.exp(-Math.LN2 * age / half);
+    if (s > 0.02) emos.push({ type: e.type, s });
+  }
+  const dEmoHr = emos.reduce((a, e) => a + EMO_P[e.type][0] * e.s, 0);
+  const dEmoTemp = emos.reduce((a, e) => a + EMO_P[e.type][1] * e.s, 0);
+  const dDrive = (drives.libido||0)*6 + (drives.attachment||0)*3 + (drives.stress||0)*5 - (drives.fatigue||0)*4;
+  const wTemp = weather?.now?.temp;
+  const dWHr = typeof wTemp === 'number' ? Math.max(0, wTemp - 30) * 0.8 : 0;
+  const dWTemp = typeof wTemp === 'number' ? Math.max(0, wTemp - 30) * 0.05 : 0;
+  const noise = seededNoise(now);
+
+  const hr = Math.max(48, Math.min(160, hourBaseline(h) + dEmoHr + dDrive + dWHr + noise));
+  const temp = Math.max(35.5, Math.min(40, 36.6 + dEmoTemp + dWTemp + noise * 0.02));
+  const rate = Math.max(8, Math.min(35, 12 + (hr - 70) * 0.15 + noise * 0.3));
+  const depth = 1 - (rate - 8) / 27;
+  const breath = depth > 0.85 ? '很深很长' : depth > 0.65 ? '深长' : depth > 0.45 ? '平稳' : depth > 0.25 ? '偏浅' : '急促';
+
+  bodyNow = { hr, temp, breath };
+  document.getElementById('hrNum').textContent = Math.round(hr);
+  document.getElementById('tempText').textContent = temp.toFixed(1) + '°C';
+  document.getElementById('breathText').textContent = '呼吸' + breath;
+  document.getElementById('heartIcon').style.animationDuration = (60 / hr).toFixed(2) + 's';
+
+  const card = document.getElementById('vitalsCard');
+  card.className = 'vitals-card';
+  const top = emos.sort((a, b) => b.s - a.s)[0];
+  const toneEl = document.getElementById('toneText');
+  if (top && top.s > 0.08) {
+    card.classList.add(TONE_CLASS[top.type] || '');
+    toneEl.textContent = TONE_LABEL[top.type] || top.type;
+  } else {
+    toneEl.textContent = '平静';
+  }
+  document.getElementById('vitalsUpdated').textContent =
+    lt.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  composeNow();
+}
+
+/* 心电图：波形频率跟实时心率走 */
+function ecgY(phase) {
+  // 一拍内的形状：P波-QRS尖峰-T波
+  if (phase < 0.10) return 0.06 * Math.sin(phase / 0.10 * Math.PI);          // P
+  if (phase < 0.14) return 0;
+  if (phase < 0.17) return -0.12 * ((phase - 0.14) / 0.03);                   // Q
+  if (phase < 0.21) return -0.12 + 1.0 * ((phase - 0.17) / 0.04);            // R上
+  if (phase < 0.25) return 0.88 - 1.08 * ((phase - 0.21) / 0.04);            // R下到S
+  if (phase < 0.30) return -0.20 + 0.20 * ((phase - 0.25) / 0.05);           // 回基线
+  if (phase < 0.55) return 0;
+  if (phase < 0.75) return 0.16 * Math.sin((phase - 0.55) / 0.20 * Math.PI); // T
+  return 0;
+}
+
+function startEcg() {
+  const cv = document.getElementById('ecgCanvas');
+  const ctx = cv.getContext('2d');
+  let lastT = performance.now(), beatPhase = 0;
+  const pts = [];  // 屏幕上已画出的点
+  function frame(t) {
+    const dt = Math.min(0.1, (t - lastT) / 1000);
+    lastT = t;
+    const W = cv.clientWidth, H = cv.clientHeight;
+    if (cv.width !== W * devicePixelRatio) { cv.width = W * devicePixelRatio; cv.height = H * devicePixelRatio; }
+    beatPhase = (beatPhase + dt * bodyNow.hr / 60) % 1;
+    pts.push(ecgY(beatPhase));
+    const maxPts = Math.floor(W / 2);
+    while (pts.length > maxPts) pts.shift();
+    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    ctx.beginPath();
+    ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--hr-color').trim() || '#d4657a';
+    ctx.lineWidth = 1.6;
+    const base = H * 0.72, amp = H * 0.62;
+    pts.forEach((y, i) => {
+      const px = i * 2, py = base - y * amp;
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    });
+    ctx.stroke();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+function themeBtnLabel() {
+  const cur = HomeTheme.get().scheme;
+  const btn = document.getElementById('themeBtn');
+  if (btn) btn.textContent = '🎨' + (HomeTheme.SCHEMES[cur]?.name || '主题');
+}
+function toggleTheme() {
+  const keys = Object.keys(HomeTheme.SCHEMES);
+  const i = (keys.indexOf(HomeTheme.get().scheme) + 1) % keys.length;
+  HomeTheme.set({ scheme: keys[i] });
+  themeBtnLabel();
+}
+themeBtnLabel();
+
+async function loadTimeline() {
+  try {
+    const items = await (await fetch('/api/timeline.json?' + Date.now())).json();
+    const el = document.getElementById('timeline');
+    if (!items.length) { el.innerHTML = '<div class="tl-text" style="color:var(--muted)">今天还没开工~</div>'; return; }
+    el.innerHTML = items.slice().reverse().map(it => {
+      const d = new Date(it.ts * 1000);
+      const t = d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+      return `<div class="tl-item">
+        <div class="tl-dot"><i data-lucide="${it.icon || 'sparkles'}"></i></div>
+        <div class="tl-body"><div class="tl-time">${t}</div><div class="tl-text">${it.text}</div></div>
+      </div>`;
+    }).join('');
+    lucide.createIcons();
+  } catch (e) {}
+}
+
+updateDays();
+loadState();
+loadActivity();
+loadBody();
+loadTimeline();
+startEcg();
+setInterval(loadBody, 30000);
+setInterval(loadTimeline, 60000);
+</script>
+</body>
+</html>

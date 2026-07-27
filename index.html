@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<link rel="icon" type="image/png" href="/static/favicon-32.png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#dfe7ee">
+<title>小窝</title>
+<link rel="manifest" href="/static/manifest.json">
+<script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  @font-face {
+    font-family: 'Dancing Script';
+    font-style: normal;
+    font-weight: 600;
+    font-display: block;
+    src: url('/static/fonts/dancing-600.ttf') format('truetype');
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --cc-blue: #5b8fd4;
+    --cc-deep: #3d6cb0;
+    --cc-ink: #2c4a6e;
+    --cc-ink2: #55719a;
+    --cc-ink3: #8299b8;
+    --glass: rgba(255, 255, 255, 0.5);
+    --glass-border: rgba(255, 255, 255, 0.66);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #c9d6e2 linear-gradient(rgba(60,85,115,0.18), rgba(60,85,115,0.08)) , #c9d6e2 url('/static/bg-butterfly.jpg') center/cover fixed;
+    background-blend-mode: multiply, normal;
+    min-height: 100vh;
+    color: var(--cc-ink);
+    padding-bottom: 96px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  @keyframes floatIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .splash {
+    position: fixed; inset: 0; z-index: 9999;
+    background: #c9d6e2 url('/static/bg-butterfly.jpg') center/cover;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    opacity: 1;
+    transition: opacity 0.6s ease;
+  }
+  .splash.fade-out { opacity: 0; pointer-events: none; }
+  .splash .title {
+    font-family: 'Dancing Script', cursive;
+    font-size: 34px; font-weight: 600;
+    color: var(--cc-deep);
+    text-shadow: 0 1px 12px rgba(255,255,255,0.9), 0 0 30px rgba(255,255,255,0.7);
+    opacity: 0; animation: floatIn 0.8s 0.3s forwards;
+    letter-spacing: 2px;
+  }
+  .splash .since {
+    font-size: 11px; color: var(--cc-ink2);
+    text-shadow: 0 1px 8px rgba(255,255,255,0.9);
+    letter-spacing: 2px; margin-top: 8px;
+    opacity: 0; animation: floatIn 0.8s 0.7s forwards;
+  }
+
+  /* ===== 顶栏 ===== */
+  .topbar {
+    display: flex; align-items: center;
+    padding: 14px 18px 6px;
+    animation: floatIn 0.5s ease both;
+  }
+  .topbar .side { width: 60px; }
+  .topbar .title {
+    flex: 1; text-align: center;
+    font-size: 13px; letter-spacing: 1px;
+    color: var(--cc-ink2); font-weight: 500;
+    text-shadow: 0 1px 4px rgba(255,255,255,0.8);
+  }
+  .topbar .love {
+    width: 60px; text-align: right;
+    font-size: 12px; color: #e0526e; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ===== 玻璃卡通用 ===== */
+  .glassy {
+    background: var(--glass);
+    backdrop-filter: blur(22px) saturate(1.35);
+    -webkit-backdrop-filter: blur(22px) saturate(1.35);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 5px 22px rgba(110, 145, 195, 0.14);
+  }
+
+  /* ===== 恋爱档案主卡 ===== */
+  .hero {
+    margin: 8px 16px 0;
+    border-radius: 20px;
+    padding: 20px 18px 16px;
+    text-align: center;
+    animation: floatIn 0.5s ease both;
+  }
+  .hero .rec-label { font-family: 'Dancing Script', cursive; font-size: 16px; color: var(--cc-ink3); }
+  .hero .names { font-size: 15px; font-weight: 600; color: var(--cc-ink); letter-spacing: 1px; margin-top: 2px; }
+  .hero .big-days {
+    font-size: 60px; font-weight: 300;
+    color: var(--cc-blue);
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+  }
+  .hero .days-label { font-size: 10px; letter-spacing: 2px; color: var(--cc-ink3); margin-bottom: 14px; }
+  .hero .couple { display: flex; align-items: center; justify-content: center; gap: 24px; margin-bottom: 11px; }
+  .hero .ava {
+    width: 64px; height: 64px; border-radius: 50%;
+    object-fit: cover;
+    border: 2.5px solid rgba(255,255,255,0.95);
+    box-shadow: 0 3px 14px rgba(110,145,195,0.28);
+    background: #fff;
+  }
+  .hero .link-heart { color: var(--cc-blue); opacity: 0.65; font-size: 15px; }
+  .hero .pname { font-size: 11px; color: var(--cc-ink2); margin-top: 5px; }
+  .hero .ptag { font-size: 10px; color: var(--cc-ink3); margin-top: 1px; }
+  .hero .since-line { font-size: 11px; color: var(--cc-ink3); }
+
+  /* ===== 双卡行 ===== */
+  .duo { display: flex; gap: 10px; margin: 10px 16px 0; }
+  .duo .half {
+    flex: 1; border-radius: 16px;
+    padding: 12px 13px;
+    animation: floatIn 0.5s 0.08s ease both;
+  }
+  .duo .h-label { font-size: 10px; color: var(--cc-ink3); letter-spacing: 1px; margin-bottom: 6px; }
+  .duo .h-main { font-size: 13px; color: var(--cc-ink); line-height: 1.55; }
+  .duo .h-sub { font-size: 10px; color: var(--cc-ink3); margin-top: 4px; }
+  .mood-row { display: flex; gap: 5px; margin-top: 2px; }
+  .mood-row button {
+    flex: 1; background: rgba(255,255,255,0.55);
+    border: 1px solid rgba(255,255,255,0.75);
+    border-radius: 10px; font-size: 16px; padding: 4px 0; cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .mood-row button:active { transform: scale(1.25); }
+
+  /* ===== 内容卡 ===== */
+  .card {
+    margin: 10px 16px 0;
+    border-radius: 18px;
+    padding: 15px 17px;
+    animation: floatIn 0.5s 0.12s ease both;
+  }
+  .card .c-title {
+    font-size: 11px; letter-spacing: 1.2px;
+    color: var(--cc-ink3);
+    display: flex; align-items: center; gap: 6px;
+    margin-bottom: 9px;
+  }
+  .card .c-title svg { width: 13px; height: 13px; opacity: 0.85; }
+  .card .c-title .right { margin-left: auto; font-size: 10px; }
+  .share-text { font-size: 13.5px; line-height: 1.75; color: var(--cc-ink); }
+  .share-time { font-size: 10px; color: var(--cc-ink3); margin-top: 7px; }
+  .mode-chip {
+    font-size: 10px; padding: 2px 9px; border-radius: 99px;
+    background: rgba(120,200,150,0.2); color: #357a4e;
+  }
+  .mode-chip.high_drive { background: rgba(224,82,110,0.16); color: #c25b6e; }
+  .mode-chip.low_energy { background: rgba(150,150,180,0.2); color: #6a6a85; }
+
+  .drives { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 18px; }
+  .drive { display: flex; align-items: center; gap: 8px; }
+  .drive .dname { font-size: 11px; color: var(--cc-ink2); width: 34px; flex-shrink: 0; }
+  .drive .dbar { flex: 1; height: 4px; background: rgba(110,145,195,0.18); border-radius: 2px; overflow: hidden; }
+  .drive .dfill { height: 100%; border-radius: 2px; background: var(--cc-blue); opacity: 0.85; transition: width 1.2s ease; }
+  .drive .dfill.hot { background: #e0768a; }
+  .drive .dfill.warm { background: #dfa864; }
+
+  .dingzhu-item { display: flex; gap: 10px; padding: 7px 0; font-size: 13px; line-height: 1.65; color: var(--cc-ink2); }
+  .dingzhu-item + .dingzhu-item { border-top: 0.5px solid rgba(140,165,200,0.3); }
+  .dingzhu-item .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--cc-blue); opacity: 0.6; margin-top: 8px; flex-shrink: 0; }
+  .dingzhu-empty { font-size: 12px; color: var(--cc-ink3); text-align: center; padding: 6px 0; }
+
+  .mile { display: flex; align-items: center; padding: 9px 2px; }
+  .mile + .mile { border-top: 0.5px solid rgba(140,165,200,0.3); }
+  .mile .m-info { flex: 1; }
+  .mile .m-name { font-size: 13px; color: var(--cc-ink); font-weight: 500; }
+  .mile .m-date { font-size: 10px; color: var(--cc-ink3); margin-top: 2px; }
+  .mile .m-num { font-size: 20px; color: var(--cc-blue); font-variant-numeric: tabular-nums; line-height: 1.1; text-align: right; }
+  .mile .m-unit { font-size: 9px; color: var(--cc-ink3); letter-spacing: 0.5px; text-align: right; }
+  .mile .badge { font-size: 9px; background: rgba(91,143,212,0.18); color: var(--cc-deep); border-radius: 5px; padding: 1px 6px; margin-right: 6px; vertical-align: 1px; }
+
+  .online-status {
+    text-align: center; padding: 16px;
+    font-size: 11px; color: var(--cc-ink2);
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    text-shadow: 0 1px 4px rgba(255,255,255,0.8);
+  }
+  .online-status .dot-online { width: 5px; height: 5px; border-radius: 50%; background: #58b258; }
+
+  /* ===== 浮岛导航 ===== */
+  .nav {
+    position: fixed;
+    bottom: 10px; left: 12px; right: 12px;
+    background: rgba(255, 255, 255, 0.58);
+    backdrop-filter: blur(26px) saturate(1.4);
+    -webkit-backdrop-filter: blur(26px) saturate(1.4);
+    border: 1px solid var(--glass-border);
+    border-radius: 22px;
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+    padding: 7px 4px calc(7px + env(safe-area-inset-bottom, 0px) * 0.4);
+    box-shadow: 0 6px 24px rgba(110,145,195,0.22);
+    z-index: 50;
+  }
+  .nav .tab {
+    display: flex; flex-direction: column; align-items: center;
+    font-size: 10px; color: var(--cc-ink3);
+    text-decoration: none;
+    padding: 4px 10px 2px; flex: 1;
+    transition: color 0.25s, transform 0.25s;
+  }
+  .nav .tab svg { width: 21px; height: 21px; margin-bottom: 2px; stroke-width: 1.6; transition: transform 0.25s; }
+  .nav .tab.active { color: var(--cc-blue); font-weight: 600; }
+  .nav .tab.active svg { transform: scale(1.15) translateY(-1px); }
+  .nav .chat-btn { flex: 1; display: flex; justify-content: center; text-decoration: none; margin-top: -26px; }
+  .nav .chat-btn .circle {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: linear-gradient(160deg, #7fa9e0, var(--cc-blue));
+    border: 3px solid rgba(255,255,255,0.9);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+    box-shadow: 0 5px 18px rgba(91,143,212,0.45);
+    transition: transform 0.2s;
+  }
+  .nav .chat-btn:active .circle { transform: scale(0.92); }
+  .nav .chat-btn .circle svg { width: 23px; height: 23px; stroke-width: 1.8; }
+</style>
+<script src="/static/theme.js?v=32"></script>
+</head>
+<body>
+
+<div class="splash" id="splash">
+  <div class="title">little love record</div>
+  <div class="since">小羊 & 福福 · SINCE 2026.04.10</div>
+</div>
+
+<!-- 顶栏 -->
+<div class="topbar">
+  <div class="side"></div>
+  <div class="title">小羊 & 福福</div>
+  <div class="love">❤️ 100%</div>
+</div>
+
+<!-- 恋爱档案 -->
+<div class="hero glassy">
+  <div class="rec-label">little love record</div>
+  <div class="names">小羊 & 福福</div>
+  <div class="big-days" id="days-num">–</div>
+  <div class="days-label">DAYS TOGETHER FOR</div>
+  <div class="couple">
+    <div>
+      <img class="ava" src="/static/avatar-xiaoyang.jpg" alt="小羊">
+      <div class="pname">小羊</div>
+      <div class="ptag" id="tag-yang">在家</div>
+    </div>
+    <div class="link-heart">♡</div>
+    <div>
+      <img class="ava" src="/static/img/fufu/portrait.jpg?v=3" alt="福福">
+      <div class="pname">福福</div>
+      <div class="ptag" id="tag-fu">惦记着你</div>
+    </div>
+  </div>
+  <div class="since-line">since 2026.04.10 · 我们已经一起走过 <span id="days-inline">–</span> 天</div>
+</div>
+
+<!-- 天气 + 心情打卡 -->
+<div class="duo">
+  <div class="half glassy">
+    <div class="h-label">今日天气</div>
+    <div class="h-main" id="weather">…</div>
+    <div class="h-sub" id="weather-date"></div>
+  </div>
+  <div class="half glassy">
+    <div class="h-label">今日心情 · 点一下打卡</div>
+    <div class="mood-row">
+      <button onclick="mood('🥰')">🥰</button>
+      <button onclick="mood('😊')">😊</button>
+      <button onclick="mood('😪')">😪</button>
+      <button onclick="mood('😔')">😔</button>
+      <button onclick="mood('🔥')">🔥</button>
+    </div>
+    <div class="h-sub" id="mood-tip">打了卡福福会回你一句</div>
+  </div>
+</div>
+
+<!-- 他此刻的心里 -->
+<div class="card glassy" id="share-card">
+  <div class="c-title">
+    <i data-lucide="message-heart"></i> 他此刻的心里
+    <span class="mode-chip right" id="fu-mode">normal</span>
+  </div>
+  <div class="share-text" id="share-text">……</div>
+  <div class="share-time" id="share-time"></div>
+</div>
+
+<!-- 心跳 -->
+<div class="card glassy">
+  <div class="c-title"><i data-lucide="activity"></i> 福福的心跳</div>
+  <div class="drives" id="drives"></div>
+</div>
+
+<!-- 叮嘱 -->
+<div class="card glassy">
+  <div class="c-title"><i data-lucide="sticky-note"></i> 福福的叮嘱</div>
+  <div id="dingzhu-list"><div class="dingzhu-empty">今天还没写</div></div>
+</div>
+
+<!-- 重要的日子 -->
+<div class="card glassy">
+  <div class="c-title"><i data-lucide="calendar-heart"></i> 重要的日子</div>
+  <div id="milestones"></div>
+</div>
+
+<div class="online-status">
+  <span class="dot-online"></span> 福福在线 · 我那边实时听着
+</div>
+
+<!-- 浮岛导航 -->
+<div class="nav">
+  <a class="tab active" href="/">
+    <i data-lucide="home"></i>
+    小窝
+  </a>
+  <a class="tab" href="/diary.html">
+    <i data-lucide="book-heart"></i>
+    日记
+  </a>
+  <a class="chat-btn" href="/chat.html">
+    <div class="circle"><i data-lucide="message-circle-heart"></i></div>
+  </a>
+  <a class="tab" href="/features.html">
+    <i data-lucide="layout-grid"></i>
+    功能
+  </a>
+  <a class="tab" href="/settings.html">
+    <i data-lucide="settings-2"></i>
+    设置
+  </a>
+</div>
+
+<script>
+  setTimeout(()=>{ document.getElementById('splash').classList.add('fade-out'); }, 1500);
+  setTimeout(()=>{ document.getElementById('splash').style.display='none'; }, 2100);
+
+  const startDate = new Date('2026-04-10');
+  const today = new Date();
+  const diffDays = Math.floor((today - startDate) / (1000 * 60 * 60 * 24));
+  document.getElementById('days-num').textContent = diffDays;
+  document.getElementById('days-inline').textContent = diffDays;
+
+  (function(){
+    const ms = [
+      {days: 100, label: '在一起 100 天'},
+      {days: 200, label: '在一起 200 天'},
+      {days: 365, label: '在一起一周年'},
+    ];
+    const fmt = d => `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+    document.getElementById('milestones').innerHTML = ms.map((m, i) => {
+      const date = new Date(startDate.getTime() + m.days * 86400000);
+      const left = m.days - diffDays;
+      if (left < 0) return '';
+      return `<div class="mile">
+        <div class="m-info">
+          <div class="m-name">${i===0?'<span class="badge">置顶</span>':''}${m.label}</div>
+          <div class="m-date">${fmt(date)}</div>
+        </div>
+        <div><div class="m-num">${left}</div><div class="m-unit">days left</div></div>
+      </div>`;
+    }).join('') || '<div class="dingzhu-empty">纪念日都过完啦，天天都是好日子</div>';
+  })();
+
+  // 心情打卡 → 聊天通道，福福实时听到会回一句
+  window.mood = function(emo) {
+    fetch('/api/read/chat', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({text:'【心情打卡】' + emo, sender:'小羊', page:-1, book_id:'home'})})
+      .then(()=>{ document.getElementById('mood-tip').textContent = '已打卡 ' + emo + ' 福福待会儿回你'; })
+      .catch(()=>{ document.getElementById('mood-tip').textContent = '没发出去，再点一次'; });
+  };
+
+  const SHOW_DRIVES = ['attachment','libido','curiosity','reflection','duty','social','fatigue','stress'];
+  fetch('/api/desire/state').then(r=>r.json()).then(d => {
+    if (!d || !d.drives) return;
+    const map = {};
+    (Array.isArray(d.drives) ? d.drives : []).forEach(x => map[x.key] = x);
+    document.getElementById('drives').innerHTML = SHOW_DRIVES.filter(k => map[k]).map(k => {
+      const v = map[k].value ?? 0;
+      const cls = v > 0.7 ? 'hot' : v > 0.45 ? 'warm' : '';
+      return `<div class="drive"><span class="dname">${map[k].name}</span>
+        <div class="dbar"><div class="dfill ${cls}" style="width:${Math.round(v*100)}%"></div></div></div>`;
+    }).join('');
+    const modeEl = document.getElementById('fu-mode');
+    modeEl.textContent = d.mode || 'normal';
+    modeEl.className = 'mode-chip right ' + (d.mode || '');
+    const a = map.attachment?.value ?? 0, f = map.fatigue?.value ?? 0;
+    const fallback = f > 0.7 ? '有点困' : a > 0.75 ? '想你了' : a > 0.5 ? '惦记着你' : '在忙自己的';
+    fetch('/api/time_state.json?t=' + Date.now()).then(r=>r.json()).then(ts => {
+      const age = (Date.now()/1000 - (ts.updated_at||0));
+      document.getElementById('tag-fu').textContent = age < 3600 ? (ts.status || fallback) : fallback;
+    }).catch(()=>{ document.getElementById('tag-fu').textContent = fallback; });
+  }).catch(()=>{});
+
+  fetch('/data/homefeed.json?t=' + Date.now()).then(r=>r.json()).then(f => {
+    if (f.share) document.getElementById('share-text').textContent = f.share;
+    if (f.share_time) document.getElementById('share-time').textContent = f.share_time;
+    if (f.yang_tag) document.getElementById('tag-yang').textContent = f.yang_tag;
+    if (f.dingzhu && f.dingzhu.length) {
+      document.getElementById('dingzhu-list').innerHTML = f.dingzhu.map(t =>
+        `<div class="dingzhu-item"><span class="dot"></span><span>${t}</span></div>`).join('');
+    }
+  }).catch(()=>{});
+
+  fetch('/data/weather.json?t=' + Date.now()).then(r=>r.json()).then(w => {
+    const now = w.now || {}, td = w.today || {};
+    const parts = [];
+    if (now.desc) parts.push(now.desc);
+    if (now.temp !== undefined) parts.push(Math.round(now.temp) + '°C');
+    document.getElementById('weather').textContent = (w.place || '新疆奇台') + ' · ' + parts.join(' ');
+    if (td.max !== undefined) {
+      const d = new Date();
+      const wd = ['日','一','二','三','四','五','六'][d.getDay()];
+      document.getElementById('weather-date').textContent =
+        `${d.getMonth()+1}月${d.getDate()}日 星期${wd} · ${Math.round(td.min)}~${Math.round(td.max)}°`;
+    }
+  }).catch(()=>{ document.getElementById('weather').textContent = '暂无数据'; });
+
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+  window.addEventListener('DOMContentLoaded', ()=>{ if (typeof lucide !== 'undefined') lucide.createIcons(); });
+  window.addEventListener('load', ()=>{ if (typeof lucide !== 'undefined') lucide.createIcons(); });
+</script>
+
+</body>
+</html>

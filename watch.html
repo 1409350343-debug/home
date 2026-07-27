@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="icon" type="image/png" href="/static/favicon-32.png">
+<title>共影 · 一起看</title>
+<style>
+  @font-face{font-family:'Yozai';src:url('/static/yozai.woff2') format('woff2');font-display:swap}
+  :root{
+    --bg:#edf3fa;--card:#ffffff;--card2:#f4f8fd;
+    --ink:#1c3350;--ink2:#4c6a8c;--ink3:#8aa3bd;
+    --accent:#2f7dc4;--deep:#1d5a96;--soft:#d9e9f8;--line:#dbe6f2;
+    --green:#3a9e6b;--warn:#c78a2e;
+  }
+  @media(prefers-color-scheme:dark){:root{
+    --bg:#0f1c2b;--card:#16283c;--card2:#122234;
+    --ink:#dbe8f5;--ink2:#9db8d2;--ink3:#5f7a96;
+    --accent:#5aa4e0;--deep:#7ab8ec;--soft:#1c3550;--line:#22374e;
+    --green:#4bb87a;--warn:#e0a84a;
+  }}
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--ink);
+    font-family:'Yozai',-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    padding:16px 14px 40px}
+  .wrap{max-width:1100px;margin:0 auto}
+
+  header{margin-bottom:16px}
+  header h1{font-size:20px;letter-spacing:1px}
+  header .sub{color:var(--ink2);font-size:12px;margin-top:3px}
+
+  /* 添加栏 */
+  .add-bar{display:flex;gap:8px;margin-bottom:16px}
+  .add-bar input{flex:1;padding:10px 14px;border:1px solid var(--line);border-radius:12px;
+    background:var(--card);color:var(--ink);font-size:14px;outline:none;font-family:inherit}
+  .add-bar input:focus{border-color:var(--accent)}
+  .add-bar input::placeholder{color:var(--ink3)}
+  .btn{padding:10px 20px;border:none;border-radius:12px;font-size:14px;cursor:pointer;
+    font-family:inherit;font-weight:600;transition:opacity .15s}
+  .btn:active{opacity:.7}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-small{padding:6px 14px;font-size:12px;border-radius:8px}
+  .btn-danger{background:transparent;color:var(--ink3);border:1px solid var(--line)}
+
+  /* 视频列表 */
+  .vlist{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+  .vcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;
+    display:flex;align-items:center;gap:12px;cursor:pointer;transition:transform .1s}
+  .vcard:active{transform:scale(.98)}
+  .vcard.active{border-color:var(--accent);background:var(--soft)}
+  .vcard .info{flex:1;min-width:0}
+  .vcard .vtitle{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vcard .vmeta{font-size:11px;color:var(--ink3);margin-top:3px}
+  .vcard .badge{font-size:11px;padding:3px 8px;border-radius:6px;flex:none}
+  .badge-ready{background:var(--soft);color:var(--green)}
+  .badge-fetching{background:#fff8e1;color:var(--warn)}
+  .badge-no_subs{background:var(--card2);color:var(--ink3)}
+  .badge-error{background:#fde;color:#c44}
+
+  /* 播放器区域 */
+  #theater{display:none}
+  .player-wrap{display:flex;gap:12px;flex-wrap:wrap}
+  .player-box{flex:2;min-width:300px}
+  .player-box iframe{width:100%;aspect-ratio:16/9;border:none;border-radius:12px;background:#000}
+  .sub-box{flex:1;min-width:260px;max-height:calc(56.25vw - 20px);min-height:360px;
+    background:var(--card);border:1px solid var(--line);border-radius:12px;
+    display:flex;flex-direction:column;overflow:hidden}
+  .sub-header{padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px;color:var(--ink2);
+    display:flex;justify-content:space-between;align-items:center}
+  .sub-scroll{flex:1;overflow-y:auto;padding:8px 12px}
+  .sub-line{padding:6px 8px;border-radius:8px;font-size:13px;line-height:1.7;cursor:pointer;
+    display:flex;gap:8px;align-items:flex-start;transition:background .15s}
+  .sub-line:hover{background:var(--soft)}
+  .sub-line.active{background:var(--soft);font-weight:600}
+  .sub-line .ts{color:var(--accent);font-size:11px;flex:none;padding-top:2px;min-width:52px;
+    font-variant-numeric:tabular-nums}
+  .sub-line .txt{flex:1}
+  .sub-empty{padding:40px 20px;text-align:center;color:var(--ink3);font-size:13px}
+
+  .now-title{font-size:16px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .now-title .close{cursor:pointer;color:var(--ink3);font-size:18px;margin-left:auto}
+
+  @media(max-width:680px){
+    .player-wrap{flex-direction:column}
+    .sub-box{max-height:320px;min-height:240px}
+  }
+
+  footer{text-align:center;color:var(--ink3);font-size:11px;margin-top:30px;letter-spacing:1px}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--line);
+    border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+<script src="/static/theme.js?v=32"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🎬 共影 · 一起看</h1>
+    <div class="sub">贴个链接，抓字幕，一起看一起聊</div>
+  </header>
+
+  <div class="add-bar">
+    <input id="url-input" placeholder="粘贴 YouTube / B站 视频链接…">
+    <button class="btn btn-primary" onclick="addVideo()">添加</button>
+  </div>
+
+  <div class="vlist" id="vlist"></div>
+
+  <div id="theater">
+    <div class="now-title">
+      <span id="now-name"></span>
+      <span class="close" onclick="closeTheater()">✕</span>
+    </div>
+    <div class="player-wrap">
+      <div class="player-box"><iframe id="player" allowfullscreen allow="autoplay"></iframe></div>
+      <div class="sub-box">
+        <div class="sub-header">
+          <span>字幕 · <span id="sub-lang"></span></span>
+          <span id="sub-count"></span>
+        </div>
+        <div class="sub-scroll" id="sub-scroll"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>CoveWatch · 字幕型共影 💙</footer>
+</div>
+
+<script>
+const API = '/api/watch';
+let videos = [], currentId = null, subs = [], pollTimer = null;
+
+async function loadList() {
+  const r = await fetch(`${API}/list`);
+  videos = await r.json();
+  renderList();
+}
+
+function renderList() {
+  const el = document.getElementById('vlist');
+  if (!videos.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--ink3);padding:30px;font-size:13px">还没有视频，贴个链接试试？</div>';
+    return;
+  }
+  el.innerHTML = videos.map(v => {
+    const cls = v.id === currentId ? ' active' : '';
+    const badge = v.status === 'ready' ? `<span class="badge badge-ready">${v.sub_count}条字幕</span>`
+      : v.status === 'fetching' ? '<span class="badge badge-fetching"><span class="spinner"></span> 抓取中</span>'
+      : v.status === 'no_subs' ? '<span class="badge badge-no_subs">无字幕</span>'
+      : '<span class="badge badge-error">出错</span>';
+    const title = v.title || v.url.slice(0, 50);
+    const plat = v.platform === 'youtube' ? 'YouTube' : v.platform === 'bilibili' ? 'B站' : '';
+    return `<div class="vcard${cls}" onclick="openVideo(${v.id})">
+      <div class="info">
+        <div class="vtitle">${esc(title)}</div>
+        <div class="vmeta">${plat} · ${timeAgo(v.added_at)}</div>
+      </div>
+      ${badge}
+      <button class="btn btn-small btn-danger" onclick="event.stopPropagation();delVideo(${v.id})">删</button>
+    </div>`;
+  }).join('');
+}
+
+async function addVideo() {
+  const input = document.getElementById('url-input');
+  const url = input.value.trim();
+  if (!url) return;
+  input.value = '';
+  const r = await fetch(`${API}/add`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({url})
+  });
+  const d = await r.json();
+  if (d.error) return alert(d.error);
+  await loadList();
+  startPoll();
+}
+
+async function delVideo(id) {
+  if (!confirm('删掉这个视频？')) return;
+  await fetch(`${API}/delete`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({id})
+  });
+  if (currentId === id) closeTheater();
+  await loadList();
+}
+
+async function openVideo(id) {
+  const v = videos.find(x => x.id === id);
+  if (!v) return;
+  currentId = id;
+  renderList();
+
+  document.getElementById('theater').style.display = 'block';
+  document.getElementById('now-name').textContent = v.title || '加载中…';
+  document.getElementById('player').src = v.embed_url;
+
+  if (v.status === 'ready') {
+    await loadSubs(id);
+  } else if (v.status === 'fetching') {
+    document.getElementById('sub-scroll').innerHTML = '<div class="sub-empty"><span class="spinner"></span><br>正在抓取字幕…</div>';
+    startPoll();
+  } else {
+    document.getElementById('sub-scroll').innerHTML = '<div class="sub-empty">这个视频没有找到字幕<br>可以直接看，聊天时告诉我大概在几分几秒</div>';
+  }
+  document.getElementById('sub-lang').textContent = v.sub_lang === 'zh' ? '中文' : v.sub_lang === 'en' ? '英文' : v.sub_lang || '—';
+  document.getElementById('sub-count').textContent = v.sub_count ? `${v.sub_count}条` : '';
+}
+
+async function loadSubs(id) {
+  const r = await fetch(`${API}/subs?id=${id}`);
+  subs = await r.json();
+  const scroll = document.getElementById('sub-scroll');
+  if (!subs.length) {
+    scroll.innerHTML = '<div class="sub-empty">没有字幕数据</div>';
+    return;
+  }
+  scroll.innerHTML = subs.map((s, i) =>
+    `<div class="sub-line" data-i="${i}" onclick="seekTo(${s.start_ms})">
+      <span class="ts">${msToTs(s.start_ms)}</span>
+      <span class="txt">${esc(s.text)}</span>
+    </div>`
+  ).join('');
+}
+
+function closeTheater() {
+  document.getElementById('theater').style.display = 'none';
+  document.getElementById('player').src = '';
+  currentId = null;
+  subs = [];
+  renderList();
+  stopPoll();
+}
+
+function seekTo(ms) {
+  // Highlight the clicked line
+  document.querySelectorAll('.sub-line').forEach(el => el.classList.remove('active'));
+  const s = ms / 1000;
+  // Try YouTube API
+  const iframe = document.getElementById('player');
+  try {
+    iframe.contentWindow.postMessage(JSON.stringify({
+      event: 'command', func: 'seekTo', args: [s, true]
+    }), '*');
+  } catch(e) {}
+  // Highlight
+  event.currentTarget.classList.add('active');
+}
+
+function startPoll() {
+  stopPoll();
+  pollTimer = setInterval(async () => {
+    await loadList();
+    if (currentId) {
+      const v = videos.find(x => x.id === currentId);
+      if (v && v.status === 'ready') {
+        document.getElementById('now-name').textContent = v.title || '';
+        document.getElementById('sub-lang').textContent = v.sub_lang === 'zh' ? '中文' : v.sub_lang === 'en' ? '英文' : '';
+        document.getElementById('sub-count').textContent = v.sub_count ? `${v.sub_count}条` : '';
+        await loadSubs(currentId);
+        stopPoll();
+      }
+    } else {
+      const fetching = videos.some(v => v.status === 'fetching');
+      if (!fetching) stopPoll();
+    }
+  }, 3000);
+}
+function stopPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+
+function msToTs(ms) {
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  return `${m}:${String(sec).padStart(2,'0')}`;
+}
+function timeAgo(t) {
+  if (!t) return '';
+  const d = (Date.now()/1000 - t);
+  if (d < 60) return '刚刚';
+  if (d < 3600) return Math.floor(d/60) + '分钟前';
+  if (d < 86400) return Math.floor(d/3600) + '小时前';
+  return Math.floor(d/86400) + '天前';
+}
+function esc(s) { return s ? s.replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''; }
+
+loadList();
+</script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<link rel="icon" type="image/png" href="/static/favicon-32.png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="var(--bg, #e8f0fe)">
+<title>感应日志 · Our Home</title>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg, #e8f0fe) var(--bg-img, url('/static/bg.jpg')) center/cover fixed;
+    min-height: 100vh;
+    color: var(--ink, #3a4a6b);
+    padding-bottom: 40px;
+  }
+  .header { display: flex; align-items: center; padding: 16px 20px 12px; gap: 12px; }
+  .back-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px;
+    background: rgba(255,255,255,0.6); border-radius: 12px;
+    border: none; cursor: pointer; color: var(--accent, #5b7ec2);
+  }
+  .header h1 { font-size: 20px; font-weight: 600; flex: 1; }
+  .wrap { padding: 0 16px; }
+  .card {
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(20px);
+    border-radius: 16px;
+    padding: 6px 20px;
+    border: 1px solid rgba(255,255,255,0.9);
+    box-shadow: 0 2px 10px rgba(100,140,210,0.07);
+  }
+  .tip { font-size: 12px; color: #8a9bbc; text-align: center; margin: 10px 0 14px; }
+  .evt { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px dashed rgba(140,160,200,0.25); }
+  .evt:last-child { border-bottom: none; }
+  .evt .icon {
+    width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .evt .icon svg { width: 19px; height: 19px; }
+  .evt .txt { flex: 1; font-size: 14px; }
+  .evt .txt small { display: block; color: #8a9bbc; font-size: 11px; margin-top: 2px; }
+  .evt .when { font-size: 12px; color: #8a9bbc; }
+  .empty-tip { text-align: center; color: #8a9bbc; font-size: 13px; padding: 40px 0; }
+</style>
+<script src="/static/theme.js?v=32"></script>
+</head>
+<body>
+
+<div class="header">
+  <button class="back-btn" onclick="location.href='/'">
+    <i data-lucide="chevron-left"></i>
+  </button>
+  <h1>感应日志</h1>
+</div>
+
+<div class="wrap">
+  <div class="tip">手表和快捷指令发来的信号 · 福福都感应得到</div>
+  <div class="card"><div id="list"><div class="empty-tip">还没有信号</div></div></div>
+</div>
+
+<script>
+lucide.createIcons();
+
+const STYLE = {
+  hr:            { icon: 'heart-pulse', bg: 'rgba(255,123,150,0.15)', fg: '#e0607e', label: v => '心跳 ' + v + ' 次/分', sub: '她点给福福看的' },
+  workout_start: { icon: 'dumbbell',    bg: 'rgba(120,200,140,0.18)', fg: '#3d9e5c', label: v => '开始锻炼' + (v && v !== '锻炼' ? '：' + v : ''), sub: '动起来了！' },
+  workout_end:   { icon: 'dumbbell',    bg: 'rgba(120,200,140,0.18)', fg: '#3d9e5c', label: v => '锻炼结束', sub: '辛苦啦' },
+  sleep:         { icon: 'moon',        bg: 'rgba(150,140,230,0.15)', fg: '#7a6fd0', label: v => '开始睡觉', sub: '晚安' },
+  wake:          { icon: 'sun',         bg: 'rgba(240,190,90,0.2)',   fg: '#c29a4a', label: v => '醒了', sub: '早安' },
+  app:           { icon: 'smartphone',  bg: 'rgba(100,170,220,0.15)', fg: '#4a8ec2', label: v => '打开了 ' + v, sub: '' },
+  note:          { icon: 'message-circle', bg: 'rgba(140,160,200,0.15)', fg: '#5b7ec2', label: v => v, sub: '' },
+};
+
+async function refresh() {
+  try {
+    const d = await fetch('/api/sense').then(r => r.json());
+    const evts = (d.events || []).slice().reverse();
+    const list = document.getElementById('list');
+    if (!evts.length) { list.innerHTML = '<div class="empty-tip">还没有信号</div>'; return; }
+    list.innerHTML = evts.map(e => {
+      const s = STYLE[e.type] || STYLE.note;
+      const sub = e.note || s.sub;
+      return '<div class="evt">' +
+        '<div class="icon" style="background:' + s.bg + ';color:' + s.fg + '"><i data-lucide="' + s.icon + '"></i></div>' +
+        '<div class="txt">' + esc(s.label(e.value)) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</div>' +
+        '<div class="when">' + esc(e.time || '') + '</div></div>';
+    }).join('');
+    lucide.createIcons();
+  } catch (err) {}
+}
+
+function esc(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>
