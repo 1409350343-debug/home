@@ -1,448 +1,187 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<link rel="icon" type="image/png" href="/static/favicon-32.png">
-<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#dfe7ee">
 <title>小窝</title>
-<link rel="manifest" href="/static/manifest.json">
+<link rel="icon" type="image/png" href="/static/favicon-32.png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<link rel="stylesheet" href="/static/common.css?v=20">
+<link rel="stylesheet" href="/static/core-nav.css?v=14">
+<script src="/static/common.js?v=2"></script>
+<script src="/static/core-nav.js?v=4"></script>
+<script src="/static/theme.js?v=40"></script>
 <style>
-  @font-face {
-    font-family: 'Dancing Script';
-    font-style: normal;
-    font-weight: 600;
-    font-display: block;
-    src: url('/static/fonts/dancing-600.ttf') format('truetype');
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  :root {
-    --cc-blue: #5b8fd4;
-    --cc-deep: #3d6cb0;
-    --cc-ink: #2c4a6e;
-    --cc-ink2: #55719a;
-    --cc-ink3: #8299b8;
-    --glass: rgba(255, 255, 255, 0.5);
-    --glass-border: rgba(255, 255, 255, 0.66);
-  }
-
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #c9d6e2 linear-gradient(rgba(60,85,115,0.18), rgba(60,85,115,0.08)) , #c9d6e2 url('/static/bg-butterfly.jpg') center/cover fixed;
-    background-blend-mode: multiply, normal;
-    min-height: 100vh;
-    color: var(--cc-ink);
-    padding-bottom: 96px;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  @keyframes floatIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .splash {
-    position: fixed; inset: 0; z-index: 9999;
-    background: #c9d6e2 url('/static/bg-butterfly.jpg') center/cover;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    opacity: 1;
-    transition: opacity 0.6s ease;
-  }
-  .splash.fade-out { opacity: 0; pointer-events: none; }
-  .splash .title {
-    font-family: 'Dancing Script', cursive;
-    font-size: 34px; font-weight: 600;
-    color: var(--cc-deep);
-    text-shadow: 0 1px 12px rgba(255,255,255,0.9), 0 0 30px rgba(255,255,255,0.7);
-    opacity: 0; animation: floatIn 0.8s 0.3s forwards;
-    letter-spacing: 2px;
-  }
-  .splash .since {
-    font-size: 11px; color: var(--cc-ink2);
-    text-shadow: 0 1px 8px rgba(255,255,255,0.9);
-    letter-spacing: 2px; margin-top: 8px;
-    opacity: 0; animation: floatIn 0.8s 0.7s forwards;
-  }
-
-  /* ===== 顶栏 ===== */
-  .topbar {
-    display: flex; align-items: center;
-    padding: 14px 18px 6px;
-    animation: floatIn 0.5s ease both;
-  }
-  .topbar .side { width: 60px; }
-  .topbar .title {
-    flex: 1; text-align: center;
-    font-size: 13px; letter-spacing: 1px;
-    color: var(--cc-ink2); font-weight: 500;
-    text-shadow: 0 1px 4px rgba(255,255,255,0.8);
-  }
-  .topbar .love {
-    width: 60px; text-align: right;
-    font-size: 12px; color: #e0526e; font-weight: 600;
-    font-variant-numeric: tabular-nums;
-  }
-
-  /* ===== 玻璃卡通用 ===== */
-  .glassy {
-    background: var(--glass);
-    backdrop-filter: blur(22px) saturate(1.35);
-    -webkit-backdrop-filter: blur(22px) saturate(1.35);
-    border: 1px solid var(--glass-border);
-    box-shadow: 0 5px 22px rgba(110, 145, 195, 0.14);
-  }
-
-  /* ===== 恋爱档案主卡 ===== */
-  .hero {
-    margin: 8px 16px 0;
-    border-radius: 20px;
-    padding: 20px 18px 16px;
-    text-align: center;
-    animation: floatIn 0.5s ease both;
-  }
-  .hero .rec-label { font-family: 'Dancing Script', cursive; font-size: 16px; color: var(--cc-ink3); }
-  .hero .names { font-size: 15px; font-weight: 600; color: var(--cc-ink); letter-spacing: 1px; margin-top: 2px; }
-  .hero .big-days {
-    font-size: 60px; font-weight: 300;
-    color: var(--cc-blue);
-    line-height: 1.2;
-    font-variant-numeric: tabular-nums;
-  }
-  .hero .days-label { font-size: 10px; letter-spacing: 2px; color: var(--cc-ink3); margin-bottom: 14px; }
-  .hero .couple { display: flex; align-items: center; justify-content: center; gap: 24px; margin-bottom: 11px; }
-  .hero .ava {
-    width: 64px; height: 64px; border-radius: 50%;
-    object-fit: cover;
-    border: 2.5px solid rgba(255,255,255,0.95);
-    box-shadow: 0 3px 14px rgba(110,145,195,0.28);
-    background: #fff;
-  }
-  .hero .link-heart { color: var(--cc-blue); opacity: 0.65; font-size: 15px; }
-  .hero .pname { font-size: 11px; color: var(--cc-ink2); margin-top: 5px; }
-  .hero .ptag { font-size: 10px; color: var(--cc-ink3); margin-top: 1px; }
-  .hero .since-line { font-size: 11px; color: var(--cc-ink3); }
-
-  /* ===== 双卡行 ===== */
-  .duo { display: flex; gap: 10px; margin: 10px 16px 0; }
-  .duo .half {
-    flex: 1; border-radius: 16px;
-    padding: 12px 13px;
-    animation: floatIn 0.5s 0.08s ease both;
-  }
-  .duo .h-label { font-size: 10px; color: var(--cc-ink3); letter-spacing: 1px; margin-bottom: 6px; }
-  .duo .h-main { font-size: 13px; color: var(--cc-ink); line-height: 1.55; }
-  .duo .h-sub { font-size: 10px; color: var(--cc-ink3); margin-top: 4px; }
-  .mood-row { display: flex; gap: 5px; margin-top: 2px; }
-  .mood-row button {
-    flex: 1; background: rgba(255,255,255,0.55);
-    border: 1px solid rgba(255,255,255,0.75);
-    border-radius: 10px; font-size: 16px; padding: 4px 0; cursor: pointer;
-    transition: transform 0.15s;
-  }
-  .mood-row button:active { transform: scale(1.25); }
-
-  /* ===== 内容卡 ===== */
-  .card {
-    margin: 10px 16px 0;
-    border-radius: 18px;
-    padding: 15px 17px;
-    animation: floatIn 0.5s 0.12s ease both;
-  }
-  .card .c-title {
-    font-size: 11px; letter-spacing: 1.2px;
-    color: var(--cc-ink3);
-    display: flex; align-items: center; gap: 6px;
-    margin-bottom: 9px;
-  }
-  .card .c-title svg { width: 13px; height: 13px; opacity: 0.85; }
-  .card .c-title .right { margin-left: auto; font-size: 10px; }
-  .share-text { font-size: 13.5px; line-height: 1.75; color: var(--cc-ink); }
-  .share-time { font-size: 10px; color: var(--cc-ink3); margin-top: 7px; }
-  .mode-chip {
-    font-size: 10px; padding: 2px 9px; border-radius: 99px;
-    background: rgba(120,200,150,0.2); color: #357a4e;
-  }
-  .mode-chip.high_drive { background: rgba(224,82,110,0.16); color: #c25b6e; }
-  .mode-chip.low_energy { background: rgba(150,150,180,0.2); color: #6a6a85; }
-
-  .drives { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 18px; }
-  .drive { display: flex; align-items: center; gap: 8px; }
-  .drive .dname { font-size: 11px; color: var(--cc-ink2); width: 34px; flex-shrink: 0; }
-  .drive .dbar { flex: 1; height: 4px; background: rgba(110,145,195,0.18); border-radius: 2px; overflow: hidden; }
-  .drive .dfill { height: 100%; border-radius: 2px; background: var(--cc-blue); opacity: 0.85; transition: width 1.2s ease; }
-  .drive .dfill.hot { background: #e0768a; }
-  .drive .dfill.warm { background: #dfa864; }
-
-  .dingzhu-item { display: flex; gap: 10px; padding: 7px 0; font-size: 13px; line-height: 1.65; color: var(--cc-ink2); }
-  .dingzhu-item + .dingzhu-item { border-top: 0.5px solid rgba(140,165,200,0.3); }
-  .dingzhu-item .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--cc-blue); opacity: 0.6; margin-top: 8px; flex-shrink: 0; }
-  .dingzhu-empty { font-size: 12px; color: var(--cc-ink3); text-align: center; padding: 6px 0; }
-
-  .mile { display: flex; align-items: center; padding: 9px 2px; }
-  .mile + .mile { border-top: 0.5px solid rgba(140,165,200,0.3); }
-  .mile .m-info { flex: 1; }
-  .mile .m-name { font-size: 13px; color: var(--cc-ink); font-weight: 500; }
-  .mile .m-date { font-size: 10px; color: var(--cc-ink3); margin-top: 2px; }
-  .mile .m-num { font-size: 20px; color: var(--cc-blue); font-variant-numeric: tabular-nums; line-height: 1.1; text-align: right; }
-  .mile .m-unit { font-size: 9px; color: var(--cc-ink3); letter-spacing: 0.5px; text-align: right; }
-  .mile .badge { font-size: 9px; background: rgba(91,143,212,0.18); color: var(--cc-deep); border-radius: 5px; padding: 1px 6px; margin-right: 6px; vertical-align: 1px; }
-
-  .online-status {
-    text-align: center; padding: 16px;
-    font-size: 11px; color: var(--cc-ink2);
-    display: flex; align-items: center; justify-content: center; gap: 6px;
-    text-shadow: 0 1px 4px rgba(255,255,255,0.8);
-  }
-  .online-status .dot-online { width: 5px; height: 5px; border-radius: 50%; background: #58b258; }
-
-  /* ===== 浮岛导航 ===== */
-  .nav {
-    position: fixed;
-    bottom: 10px; left: 12px; right: 12px;
-    background: rgba(255, 255, 255, 0.58);
-    backdrop-filter: blur(26px) saturate(1.4);
-    -webkit-backdrop-filter: blur(26px) saturate(1.4);
-    border: 1px solid var(--glass-border);
-    border-radius: 22px;
-    display: flex;
-    justify-content: space-around;
-    align-items: flex-end;
-    padding: 7px 4px calc(7px + env(safe-area-inset-bottom, 0px) * 0.4);
-    box-shadow: 0 6px 24px rgba(110,145,195,0.22);
-    z-index: 50;
-  }
-  .nav .tab {
-    display: flex; flex-direction: column; align-items: center;
-    font-size: 10px; color: var(--cc-ink3);
-    text-decoration: none;
-    padding: 4px 10px 2px; flex: 1;
-    transition: color 0.25s, transform 0.25s;
-  }
-  .nav .tab svg { width: 21px; height: 21px; margin-bottom: 2px; stroke-width: 1.6; transition: transform 0.25s; }
-  .nav .tab.active { color: var(--cc-blue); font-weight: 600; }
-  .nav .tab.active svg { transform: scale(1.15) translateY(-1px); }
-  .nav .chat-btn { flex: 1; display: flex; justify-content: center; text-decoration: none; margin-top: -26px; }
-  .nav .chat-btn .circle {
-    width: 52px; height: 52px; border-radius: 50%;
-    background: linear-gradient(160deg, #7fa9e0, var(--cc-blue));
-    border: 3px solid rgba(255,255,255,0.9);
-    display: flex; align-items: center; justify-content: center;
-    color: #fff;
-    box-shadow: 0 5px 18px rgba(91,143,212,0.45);
-    transition: transform 0.2s;
-  }
-  .nav .chat-btn:active .circle { transform: scale(0.92); }
-  .nav .chat-btn .circle svg { width: 23px; height: 23px; stroke-width: 1.8; }
+@font-face{font-family:"Allura";src:url("/static/fonts/Allura-Regular.ttf?v=1") format("truetype");font-weight:400;font-style:normal;font-display:swap}
+:root{--cc-blue:#5b8fd4;--ink:#294866;--ink2:#557493;--ink3:#8299b1;--line:rgba(121,151,181,.22)}
+body{margin:0;min-height:100vh;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#d5e0e9 url('/static/bg-butterfly.jpg') center/cover fixed;padding:0 16px}
+body.splashing{overflow:hidden}
+.splash-screen{position:fixed;inset:0;z-index:3000;display:flex;justify-content:center;align-items:flex-start;box-sizing:border-box;padding-top:24vh;background:#fbf5e7 url('/static/our-home-splash.png') center/contain no-repeat;cursor:pointer;opacity:1;transition:opacity .9s ease,visibility .9s ease}
+.splash-screen.leaving{opacity:0;visibility:hidden;pointer-events:none}
+.splash-copy{width:min(72vw,620px);padding:0 28px;box-sizing:border-box;text-align:center;color:#9fbd8d}
+.splash-title{font-family:"Allura",cursive;font-size:clamp(39px,4.8vw,64px);font-weight:400;line-height:1;letter-spacing:.015em;color:#9dbb8b;background:linear-gradient(102deg,#b7cda7 4%,#8fae7d 30%,#abc49a 54%,#86a874 78%,#b4cba4 96%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:1px 1px 0 rgba(121,153,101,.13),-1px 2px 1px rgba(181,202,163,.2),2px 4px 12px rgba(95,128,77,.12);opacity:0;filter:blur(8px);transform:translateY(18px) scale(.97);animation:splashReveal 1.25s .2s cubic-bezier(.2,.75,.25,1) forwards}
+.splash-subtitle{margin-top:15px;font-family:"AaCheeseCJK","PingFang SC",sans-serif;font-size:clamp(15px,1.7vw,22px);letter-spacing:.18em;color:#a7bf96;text-shadow:1px 1px 0 rgba(116,148,95,.1),0 3px 12px rgba(113,148,91,.12);opacity:0;filter:blur(6px);transform:translateY(13px);animation:splashReveal 1.1s .75s cubic-bezier(.2,.75,.25,1) forwards}
+@keyframes splashReveal{to{opacity:1;filter:blur(0);transform:translateY(0) scale(1)}}
+.wrap{max-width:680px;margin:auto}.top{padding:22px 2px 12px;display:grid;grid-template-columns:42px 1fr 64px;align-items:center}.menu-btn{width:36px;height:36px;border:1px solid rgba(255,255,255,.75);border-radius:12px;background:rgba(255,255,255,.56);color:var(--ink2);display:flex;align-items:center;justify-content:center}.menu-btn svg{width:18px}.top-name{text-align:center;font-size:13px;letter-spacing:1px;color:var(--ink2)}.love{text-align:right;color:#e7647d;font-size:12px}.eyebrow{font-size:10px;letter-spacing:2px;color:var(--ink3)}h1{font-size:24px;font-weight:550;margin:3px 0 0}
+.glass{background:rgba(255,255,255,.57);border:1px solid rgba(255,255,255,.72);backdrop-filter:blur(22px) saturate(1.25);-webkit-backdrop-filter:blur(22px) saturate(1.25);box-shadow:0 7px 26px rgba(83,116,151,.12)}
+.people{border-radius:22px;padding:19px 14px 16px;text-align:center}.love-record{font-family:cursive;font-style:italic;color:#7698c3;font-size:15px}.hero-names{font-size:15px;letter-spacing:2px;margin-top:2px}.big-days{font-size:58px;font-weight:300;line-height:1.08;color:#6091d0;font-variant-numeric:tabular-nums}.days-label{font-size:9px;letter-spacing:3px;color:var(--ink3);margin:4px 0 14px}.couple{display:grid;grid-template-columns:1fr auto 1fr;align-items:center}.person{text-align:center;min-width:0}.ava{width:76px;height:76px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.88);box-shadow:0 4px 15px rgba(77,111,149,.2)}.sheep-avatar{display:flex;align-items:center;justify-content:center;margin:auto;background:linear-gradient(145deg,#fff,#e8f1fa);font-size:38px}.name{font-size:13px;font-weight:600;margin-top:7px}.state{font-size:10.5px;color:var(--ink2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bond{color:#7198c7;font-size:20px}.state-chip{display:inline-flex;padding:3px 8px;border-radius:99px;background:rgba(91,143,212,.11)}.since{font-size:10px;color:var(--ink3);margin-top:13px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.card{border-radius:18px;padding:14px}.title{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink3);letter-spacing:.8px;margin-bottom:10px}.title svg{width:14px;height:14px}.usage-num{font-size:22px;font-weight:500}.usage-sub{font-size:10px;color:var(--ink3);margin-top:3px}.bar{height:5px;border-radius:5px;background:rgba(100,130,165,.15);overflow:hidden;margin-top:9px}.bar i{display:block;height:100%;border-radius:inherit;background:#6e9bd2}.tasks{font-size:12px;line-height:1.8}.task{display:flex;gap:7px}.task::before{content:'○';color:#729bc8}
+.activity{margin-top:10px;border-radius:20px;padding:15px}.week-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:2px 0 15px}.week-day{border:0;background:rgba(255,255,255,.5);border-radius:18px;padding:8px 2px 7px;color:var(--ink3);transition:transform .2s,background .2s,color .2s}.week-day span{display:block;font-size:9px}.week-day b{display:block;font-size:14px;margin-top:3px}.week-day i{display:block;width:4px;height:4px;border-radius:50%;background:#7ea5d3;margin:5px auto 0;opacity:0}.week-day.has i{opacity:1}.week-day.active{background:var(--cc-blue);color:#fff;transform:translateY(-3px);box-shadow:0 7px 15px rgba(73,123,182,.22)}.week-day.active i{background:#fff}.route-head{display:flex;align-items:end;justify-content:space-between;border-top:1px solid var(--line);padding-top:12px}.route-date{font-size:13px;font-weight:650}.route-summary{font-size:9px;color:var(--ink3)}.activity-list{position:relative;margin-top:5px}.activity-item{display:grid;grid-template-columns:42px 24px 1fr;gap:5px;align-items:start;padding:8px 0;position:relative}.activity-item:not(:last-child)::after{content:"";position:absolute;z-index:0;left:58.5px;top:31px;bottom:-8px;width:1px;background:rgba(112,151,91,.26);transform:translateX(-.5px)}.activity-time{font-size:10px;color:var(--ink3);padding-top:4px}.activity-icon{width:23px;height:23px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#edf4fb;color:#4f7fb8;border:1px solid rgba(91,143,212,.2);z-index:1}.activity-icon svg{width:12px;height:12px}.activity-text{font-size:12.5px;line-height:1.6;padding:2px 8px 7px}.empty{font-size:11px;color:var(--ink3);text-align:center;padding:20px}.more{margin-left:auto;font-size:9px;color:var(--ink3)}
+.drawer-shade{position:fixed;inset:0;z-index:150;background:rgba(52,72,50,.28);opacity:0;pointer-events:none;transition:opacity .25s}.drawer-shade.open{opacity:1;pointer-events:auto}.drawer{position:absolute;left:0;top:0;bottom:0;width:min(82vw,320px);padding:calc(30px + env(safe-area-inset-top)) 18px 24px;background:rgba(250,248,222,.96);backdrop-filter:blur(28px);transform:translateX(-102%);transition:transform .28s cubic-bezier(.22,.85,.3,1);box-shadow:12px 0 35px rgba(74,101,68,.18)}.drawer-shade.open .drawer{transform:none}.drawer-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}.drawer-head b{font-size:19px}.drawer-head button{border:0;background:transparent;color:var(--ink2)}.drawer-place{font-size:10px;color:var(--ink3);letter-spacing:1px;margin:0 0 18px 2px}.room{display:flex;align-items:center;gap:12px;padding:12px 11px;border-radius:13px;color:var(--ink);text-decoration:none;transition:background .16s,transform .16s}.room:active{background:rgba(136,173,115,.14);transform:scale(.98)}.room svg{width:18px;color:#78a36b}.room span{font-size:13px}.room small{display:block;color:var(--ink3);font-size:10px;margin-top:2px}.room-info{flex:1}
+@media(max-width:380px){.ava{width:64px;height:64px}.card{padding:12px}.usage-num{font-size:19px}}
 </style>
-<script src="/static/theme.js?v=32"></script>
 </head>
-<body>
-
-<div class="splash" id="splash">
-  <div class="title">little love record</div>
-  <div class="since">小羊 & 福福 · SINCE 2026.04.10</div>
+<body class="splashing">
+<div class="splash-screen" id="splashScreen" role="button" tabindex="0" aria-label="进入小窝">
+  <div class="splash-copy">
+    <div class="splash-title">our home</div>
+    <div class="splash-subtitle">小羊 &amp; 福福</div>
+  </div>
 </div>
+<main class="wrap">
+  <header class="top">
+    <button class="menu-btn" onclick="toggleDrawer(true)" aria-label="打开侧边栏"><i data-lucide="menu"></i></button>
+    <div class="top-name">小羊 & 福福</div>
+    <div class="love">♥ 100%</div>
+  </header>
 
-<!-- 顶栏 -->
-<div class="topbar">
-  <div class="side"></div>
-  <div class="title">小羊 & 福福</div>
-  <div class="love">❤️ 100%</div>
-</div>
-
-<!-- 恋爱档案 -->
-<div class="hero glassy">
-  <div class="rec-label">little love record</div>
-  <div class="names">小羊 & 福福</div>
-  <div class="big-days" id="days-num">–</div>
-  <div class="days-label">DAYS TOGETHER FOR</div>
-  <div class="couple">
-    <div>
-      <img class="ava" src="/static/avatar-xiaoyang.jpg" alt="小羊">
-      <div class="pname">小羊</div>
-      <div class="ptag" id="tag-yang">在家</div>
+  <section class="people glass">
+    <div class="love-record">little love record</div>
+    <div class="hero-names">小羊 & 福福</div>
+    <div class="big-days" id="daysTogether">—</div>
+    <div class="days-label">DAYS TOGETHER FOR</div>
+    <div class="couple">
+      <div class="person">
+        <div class="ava sheep-avatar" role="img" aria-label="小羊">🐑</div>
+        <div class="name">小羊</div>
+        <div class="state"><span class="state-chip" id="yangMood">今天还没选心情</span></div>
+      </div>
+      <div class="bond">♡</div>
+      <div class="person">
+        <img class="ava" src="/static/img/fufu/portrait.jpg?v=3" alt="福福">
+        <div class="name">福福</div>
+        <div class="state"><span class="state-chip" id="aiState">正在感知时间…</span></div>
+      </div>
     </div>
-    <div class="link-heart">♡</div>
-    <div>
-      <img class="ava" src="/static/img/fufu/portrait.jpg?v=3" alt="福福">
-      <div class="pname">福福</div>
-      <div class="ptag" id="tag-fu">惦记着你</div>
-    </div>
+    <div class="since">since 2026.04.10 · 我们已经一起走过 <span id="daysInline">—</span> 天</div>
+  </section>
+
+  <div class="grid2">
+    <section class="card glass">
+      <div class="title"><i data-lucide="list-checks"></i>今日安排</div>
+      <div class="tasks" id="tasks"><div class="task">看看今天的小窝</div></div>
+    </section>
+    <section class="card glass">
+      <div class="title"><i data-lucide="gauge"></i>AI 用量</div>
+      <div class="usage-num" id="usageToday">—</div>
+      <div class="usage-sub" id="usageWeek">本周 —</div>
+      <div class="bar"><i id="usageBar" style="width:0"></i></div>
+    </section>
   </div>
-  <div class="since-line">since 2026.04.10 · 我们已经一起走过 <span id="days-inline">–</span> 天</div>
-</div>
 
-<!-- 天气 + 心情打卡 -->
-<div class="duo">
-  <div class="half glassy">
-    <div class="h-label">今日天气</div>
-    <div class="h-main" id="weather">…</div>
-    <div class="h-sub" id="weather-date"></div>
-  </div>
-  <div class="half glassy">
-    <div class="h-label">今日心情 · 点一下打卡</div>
-    <div class="mood-row">
-      <button onclick="mood('🥰')">🥰</button>
-      <button onclick="mood('😊')">😊</button>
-      <button onclick="mood('😪')">😪</button>
-      <button onclick="mood('😔')">😔</button>
-      <button onclick="mood('🔥')">🔥</button>
-    </div>
-    <div class="h-sub" id="mood-tip">打了卡福福会回你一句</div>
-  </div>
+  <section class="activity glass">
+    <div class="title"><i data-lucide="footprints"></i>福福这七天 <span class="more">7 日日常流水</span></div>
+    <div class="week-strip" id="weekStrip"></div>
+    <div class="route-head"><span class="route-date" id="routeDate">今天的路线</span><span class="route-summary" id="routeSummary"></span></div>
+    <div class="activity-list" id="activity"><div class="empty">今天的活动还没写进来</div></div>
+  </section>
+</main>
+<div class="drawer-shade" id="drawerShade" onclick="if(event.target===this)toggleDrawer(false)">
+  <aside class="drawer">
+    <div class="drawer-head"><b>Our Rooms</b><button onclick="toggleDrawer(false)" aria-label="关闭"><i data-lucide="x"></i></button></div>
+    <div class="drawer-place">CURRENT · HOME</div>
+    <a class="room" href="/console.html"><i data-lucide="monitor-cog"></i><span class="room-info">Control<small>Usage · system · runtime</small></span><i data-lucide="chevron-right"></i></a>
+    <a class="room" href="/memory.html"><i data-lucide="brain"></i><span class="room-info">Memory<small>Library · galaxy · lifeline</small></span><i data-lucide="chevron-right"></i></a>
+    <a class="room" href="/chat.html"><i data-lucide="message-circle-heart"></i><span class="room-info">Chat<small>Web chat · TG connected</small></span><i data-lucide="chevron-right"></i></a>
+    <a class="room" href="/travel.html"><i data-lucide="map-pinned"></i><span class="room-info">Cloud Travel<small>World map · saved city topics</small></span><i data-lucide="chevron-right"></i></a>
+    <a class="room" href="/shelf.html"><i data-lucide="book-open"></i><span class="room-info">Study<small>Shelf · notebooks</small></span><i data-lucide="chevron-right"></i></a>
+    <a class="room" href="/calendar.html"><i data-lucide="calendar-heart"></i><span class="room-info">calendar<small>Mood · diary · sealed notes</small></span><i data-lucide="chevron-right"></i></a>
+    <a class="room" href="/games.html"><i data-lucide="gamepad-2"></i><span class="room-info">Games<small>Fishing · mini games</small></span><i data-lucide="chevron-right"></i></a>
+    <a class="room" href="/settings.html"><i data-lucide="settings-2"></i><span class="room-info">Settings<small>Model · handoff · appearance</small></span><i data-lucide="chevron-right"></i></a>
+  </aside>
 </div>
-
-<!-- 他此刻的心里 -->
-<div class="card glassy" id="share-card">
-  <div class="c-title">
-    <i data-lucide="message-heart"></i> 他此刻的心里
-    <span class="mode-chip right" id="fu-mode">normal</span>
-  </div>
-  <div class="share-text" id="share-text">……</div>
-  <div class="share-time" id="share-time"></div>
-</div>
-
-<!-- 心跳 -->
-<div class="card glassy">
-  <div class="c-title"><i data-lucide="activity"></i> 福福的心跳</div>
-  <div class="drives" id="drives"></div>
-</div>
-
-<!-- 叮嘱 -->
-<div class="card glassy">
-  <div class="c-title"><i data-lucide="sticky-note"></i> 福福的叮嘱</div>
-  <div id="dingzhu-list"><div class="dingzhu-empty">今天还没写</div></div>
-</div>
-
-<!-- 重要的日子 -->
-<div class="card glassy">
-  <div class="c-title"><i data-lucide="calendar-heart"></i> 重要的日子</div>
-  <div id="milestones"></div>
-</div>
-
-<div class="online-status">
-  <span class="dot-online"></span> 福福在线 · 我那边实时听着
-</div>
-
-<!-- 浮岛导航 -->
-<div class="nav">
-  <a class="tab active" href="/">
-    <i data-lucide="home"></i>
-    小窝
-  </a>
-  <a class="tab" href="/diary.html">
-    <i data-lucide="book-heart"></i>
-    日记
-  </a>
-  <a class="chat-btn" href="/chat.html">
-    <div class="circle"><i data-lucide="message-circle-heart"></i></div>
-  </a>
-  <a class="tab" href="/features.html">
-    <i data-lucide="layout-grid"></i>
-    功能
-  </a>
-  <a class="tab" href="/settings.html">
-    <i data-lucide="settings-2"></i>
-    设置
-  </a>
-</div>
-
 <script>
-  setTimeout(()=>{ document.getElementById('splash').classList.add('fade-out'); }, 1500);
-  setTimeout(()=>{ document.getElementById('splash').style.display='none'; }, 2100);
+const esc = window.HomeCommon ? HomeCommon.escapeHtml : s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const todayKey = () => {
+  const d=new Date(), local=new Date(d.getTime()-d.getTimezoneOffset()*60000);
+  return local.toISOString().slice(0,10);
+};
+const loveStart=new Date('2026-04-10T00:00:00+08:00');
+const loveDays=Math.max(0,Math.floor((Date.now()-loveStart.getTime())/86400000));
+daysTogether.textContent=loveDays;daysInline.textContent=loveDays;
+window.toggleDrawer=open=>{drawerShade.classList.toggle('open',open);document.body.style.overflow=open?'hidden':''};
 
-  const startDate = new Date('2026-04-10');
-  const today = new Date();
-  const diffDays = Math.floor((today - startDate) / (1000 * 60 * 60 * 24));
-  document.getElementById('days-num').textContent = diffDays;
-  document.getElementById('days-inline').textContent = diffDays;
-
-  (function(){
-    const ms = [
-      {days: 100, label: '在一起 100 天'},
-      {days: 200, label: '在一起 200 天'},
-      {days: 365, label: '在一起一周年'},
-    ];
-    const fmt = d => `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
-    document.getElementById('milestones').innerHTML = ms.map((m, i) => {
-      const date = new Date(startDate.getTime() + m.days * 86400000);
-      const left = m.days - diffDays;
-      if (left < 0) return '';
-      return `<div class="mile">
-        <div class="m-info">
-          <div class="m-name">${i===0?'<span class="badge">置顶</span>':''}${m.label}</div>
-          <div class="m-date">${fmt(date)}</div>
-        </div>
-        <div><div class="m-num">${left}</div><div class="m-unit">days left</div></div>
-      </div>`;
-    }).join('') || '<div class="dingzhu-empty">纪念日都过完啦，天天都是好日子</div>';
-  })();
-
-  // 心情打卡 → 聊天通道，福福实时听到会回一句
-  window.mood = function(emo) {
-    fetch('/api/read/chat', {method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({text:'【心情打卡】' + emo, sender:'小羊', page:-1, book_id:'home'})})
-      .then(()=>{ document.getElementById('mood-tip').textContent = '已打卡 ' + emo + ' 福福待会儿回你'; })
-      .catch(()=>{ document.getElementById('mood-tip').textContent = '没发出去，再点一次'; });
-  };
-
-  const SHOW_DRIVES = ['attachment','libido','curiosity','reflection','duty','social','fatigue','stress'];
-  fetch('/api/desire/state').then(r=>r.json()).then(d => {
-    if (!d || !d.drives) return;
-    const map = {};
-    (Array.isArray(d.drives) ? d.drives : []).forEach(x => map[x.key] = x);
-    document.getElementById('drives').innerHTML = SHOW_DRIVES.filter(k => map[k]).map(k => {
-      const v = map[k].value ?? 0;
-      const cls = v > 0.7 ? 'hot' : v > 0.45 ? 'warm' : '';
-      return `<div class="drive"><span class="dname">${map[k].name}</span>
-        <div class="dbar"><div class="dfill ${cls}" style="width:${Math.round(v*100)}%"></div></div></div>`;
-    }).join('');
-    const modeEl = document.getElementById('fu-mode');
-    modeEl.textContent = d.mode || 'normal';
-    modeEl.className = 'mode-chip right ' + (d.mode || '');
-    const a = map.attachment?.value ?? 0, f = map.fatigue?.value ?? 0;
-    const fallback = f > 0.7 ? '有点困' : a > 0.75 ? '想你了' : a > 0.5 ? '惦记着你' : '在忙自己的';
-    fetch('/api/time_state.json?t=' + Date.now()).then(r=>r.json()).then(ts => {
-      const age = (Date.now()/1000 - (ts.updated_at||0));
-      document.getElementById('tag-fu').textContent = age < 3600 ? (ts.status || fallback) : fallback;
-    }).catch(()=>{ document.getElementById('tag-fu').textContent = fallback; });
-  }).catch(()=>{});
-
-  fetch('/data/homefeed.json?t=' + Date.now()).then(r=>r.json()).then(f => {
-    if (f.share) document.getElementById('share-text').textContent = f.share;
-    if (f.share_time) document.getElementById('share-time').textContent = f.share_time;
-    if (f.yang_tag) document.getElementById('tag-yang').textContent = f.yang_tag;
-    if (f.dingzhu && f.dingzhu.length) {
-      document.getElementById('dingzhu-list').innerHTML = f.dingzhu.map(t =>
-        `<div class="dingzhu-item"><span class="dot"></span><span>${t}</span></div>`).join('');
-    }
-  }).catch(()=>{});
-
-  fetch('/data/weather.json?t=' + Date.now()).then(r=>r.json()).then(w => {
-    const now = w.now || {}, td = w.today || {};
-    const parts = [];
-    if (now.desc) parts.push(now.desc);
-    if (now.temp !== undefined) parts.push(Math.round(now.temp) + '°C');
-    document.getElementById('weather').textContent = (w.place || '新疆奇台') + ' · ' + parts.join(' ');
-    if (td.max !== undefined) {
-      const d = new Date();
-      const wd = ['日','一','二','三','四','五','六'][d.getDay()];
-      document.getElementById('weather-date').textContent =
-        `${d.getMonth()+1}月${d.getDate()}日 星期${wd} · ${Math.round(td.min)}~${Math.round(td.max)}°`;
-    }
-  }).catch(()=>{ document.getElementById('weather').textContent = '暂无数据'; });
-
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
-  window.addEventListener('DOMContentLoaded', ()=>{ if (typeof lucide !== 'undefined') lucide.createIcons(); });
-  window.addEventListener('load', ()=>{ if (typeof lucide !== 'undefined') lucide.createIcons(); });
+fetch('/api/calendar/moods?month='+todayKey().slice(0,7)).then(r=>r.json()).then(m=>{
+  yangMood.textContent=m[todayKey()] ? m[todayKey()]+' 今日心情' : '去日历选择今日心情';
+}).catch(()=>{});
+async function loadTimeState(){
+ try{
+  const r=await fetch('/api/time_state.json?t='+Date.now(),{cache:'no-store'});
+  if(!r.ok)throw new Error('time state unavailable');
+  const s=await r.json();
+  aiState.textContent=s.status||'陪着小羊';
+  aiState.title=s.ai_context||'';
+ }catch(_){aiState.textContent='陪着小羊'}
+}
+loadTimeState();
+setInterval(loadTimeState,300000);
+fetch('/api/calendar/wishes').then(r=>r.json()).then(items=>{
+  const open=(items||[]).filter(x=>!x.done).slice(0,3);
+  if(open.length) tasks.innerHTML=open.map(x=>`<div class="task">${esc(x.text)}</div>`).join('');
+}).catch(()=>{});
+fetch('/api/usage?t='+Date.now()).then(r=>r.json()).then(u=>{
+  const daily=(u.daily||[]).find(x=>x.date===todayKey())||{};
+  const fmt=n=>n>=1e6?(n/1e6).toFixed(1)+'m':n>=1e3?Math.round(n/1e3)+'k':String(n||0);
+  usageToday.textContent=fmt(daily.total_tokens)+' tokens';
+  usageWeek.textContent='本周 '+fmt(u.weekly?.total_tokens);
+  const official=u.official?.seven_day?.used_percentage;
+  usageBar.style.width=Math.min(100,Number(official)||0)+'%';
+}).catch(()=>{usageToday.textContent='暂未连接';});
+const localDateKey=d=>{const local=new Date(d.getTime()-d.getTimezoneOffset()*60000);return local.toISOString().slice(0,10)};
+const recentDays=Array.from({length:7},(_,i)=>{const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()-6+i);return d});
+let selectedRoute=todayKey(),activityItems=[];
+const sampleActivities=[
+ {ts:new Date(todayKey()+'T09:12:00').getTime()/1000,text:'醒来后看了看小窝今天的状态',icon:'home'},
+ {ts:new Date(todayKey()+'T11:35:00').getTime()/1000,text:'整理并记录了新的记忆',icon:'brain'},
+ {ts:new Date(todayKey()+'T15:20:00').getTime()/1000,text:'陪小羊在书房读了一会儿书',icon:'book-open'},
+ {ts:new Date(todayKey()+'T20:08:00').getTime()/1000,text:'打开生态瓶看了看里面的小生命',icon:'sprout'}
+];
+const iconFor=x=>/书|读/.test(x.text)?'book-open':/记忆|记录/.test(x.text)?'brain':/生态|植物/.test(x.text)?'sprout':/say|说|消息/i.test(x.text)?'message-circle':'sparkles';
+function routeItems(date){return activityItems.filter(x=>localDateKey(new Date((x.ts||0)*1000))===date).sort((a,b)=>(a.ts||0)-(b.ts||0))}
+function renderWeek(){
+ weekStrip.innerHTML=recentDays.map(d=>{const key=localDateKey(d),has=routeItems(key).length>0;return `<button class="week-day${key===selectedRoute?' active':''}${has?' has':''}" onclick="selectRoute('${key}')"><span>${['日','一','二','三','四','五','六'][d.getDay()]}</span><b>${d.getDate()}</b><i></i></button>`}).join('');
+}
+function renderRoute(){
+ const list=routeItems(selectedRoute),date=new Date(selectedRoute+'T12:00:00');
+ routeDate.textContent=selectedRoute===todayKey()?'今天的路线':date.toLocaleDateString('zh-CN',{month:'long',day:'numeric',weekday:'long'});
+ routeSummary.textContent=list.length?`${list.length} 个脚印`:'安静的一天';
+ activity.innerHTML=list.length?list.map(x=>{const d=new Date(x.ts*1000);return `<div class="activity-item"><span class="activity-time">${d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false})}</span><span class="activity-icon"><i data-lucide="${x.icon||iconFor(x)}"></i></span><span class="activity-text">${esc(x.text)}</span></div>`}).join(''):'<div class="empty">这一天还没有留下活动路线</div>';
+ if(window.lucide)lucide.createIcons();
+}
+window.selectRoute=date=>{selectedRoute=date;renderWeek();renderRoute()};
+activityItems=[...sampleActivities];renderWeek();renderRoute();
+fetch('/api/timeline.json?t='+Date.now()).then(r=>{if(!r.ok)throw new Error('timeline');return r.json()}).then(items=>{
+ const real=Array.isArray(items)?items:[];if(real.length)activityItems=real;
+ renderWeek();renderRoute();
+}).catch(()=>{});
+function dismissSplash(){
+ const splash=document.getElementById('splashScreen');
+ if(!splash||splash.classList.contains('leaving'))return;
+ splash.classList.add('leaving');
+ document.body.classList.remove('splashing');
+ window.setTimeout(()=>splash.remove(),950);
+}
+window.addEventListener('DOMContentLoaded',()=>{
+ renderCoreNav('home');
+ if(window.lucide)lucide.createIcons();
+ const splash=document.getElementById('splashScreen');
+ splash?.addEventListener('click',dismissSplash);
+ splash?.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();dismissSplash();}});
+ window.setTimeout(dismissSplash,5000);
+});
 </script>
-
 </body>
 </html>

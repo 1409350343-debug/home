@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><title>当日日记</title>
+<link rel="icon" href="/static/favicon-32.png"><script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<link rel="stylesheet" href="/static/common.css?v=20"><link rel="stylesheet" href="/static/core-nav.css?v=14">
+<script src="/static/common.js?v=2"></script><script src="/static/core-nav.js?v=4"></script><script src="/static/theme.js?v=40"></script>
+<style>
+:root{--accent:#8caf78;--ink:#496653;--ink2:#6f886f;--ink3:#91a78d;--paper:rgba(255,252,235,.84);--line:rgba(116,148,102,.26)}
+*{box-sizing:border-box}body{margin:0;background:#f8f1df url('/static/summer-green-background.png') center bottom/cover fixed;color:var(--ink);padding:0 16px 110px}.wrap{max-width:680px;margin:auto}.top{padding:22px 2px 12px;display:flex;align-items:center;gap:12px}.back{width:38px;height:38px;border:0;border-radius:13px;background:rgba(255,252,235,.8);color:var(--ink2);display:grid;place-items:center}.back svg{width:20px}.title{flex:1}.eyebrow{font-size:9px;letter-spacing:.12em;color:var(--ink3);text-transform:none}.title h1{font-size:21px;margin:3px 0 0;font-weight:650}.count{font-size:9px;color:var(--ink3)}.count b{font-size:16px;color:var(--ink);margin-right:3px}
+.timeline{position:relative;padding-left:64px;margin-top:6px}.timeline:before{content:"";position:absolute;left:34px;top:12px;bottom:24px;width:1px;background:rgba(104,135,91,.25)}.entry-row{position:relative;margin-bottom:13px}.time{position:absolute;right:calc(100% + 24px);top:15px;font-size:9px;color:var(--ink3);white-space:nowrap}.pin{position:absolute;left:-35px;top:18px;width:9px;height:9px;border-radius:50%;background:#eef3df;border:2px solid var(--ink3)}.card{position:relative;overflow:hidden;border-radius:16px;padding:14px 15px;background:rgba(255,252,235,.84);border:1px solid rgba(255,255,255,.82);box-shadow:0 6px 20px rgba(72,95,55,.1)}.card.openable{cursor:pointer;transition:transform .2s ease,box-shadow .2s ease}.card.openable:hover{transform:translateY(-1px);box-shadow:0 9px 25px rgba(72,95,55,.14)}.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.author{font-size:11px;font-weight:700}.mood-tags{display:flex;gap:5px;flex-wrap:wrap}.mood-tag{display:inline-flex;align-items:center;gap:4px;background:#fffdf4;border-radius:999px;padding:3px 7px;font-size:8px;color:var(--ink2)}.mood-tag svg{width:12px;height:12px}.card p{font-family:inherit;font-size:13px;line-height:1.75;margin:10px 0 0;color:var(--ink)}.comment{border:0;background:transparent;padding:4px 0 0;font:inherit;font-size:8px;color:var(--ink3);margin:7px 0 0 auto;display:block}.comments-panel{display:none;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}.card.expanded .comments-panel{display:block}.comment-item{padding:8px 10px;margin-top:6px;border-radius:10px;background:rgba(232,240,218,.7);font-size:10px;line-height:1.55}.comment-item b{margin-right:6px}.comment-form{display:flex;gap:6px;margin-top:9px}.comment-form input{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;background:#fffdf7;padding:8px;font:inherit;font-size:10px;color:var(--ink)}.comment-form button{border:0;border-radius:10px;background:var(--accent);color:white;padding:0 12px;font:inherit;font-size:10px}.card.locked{min-height:92px;display:flex;align-items:center;justify-content:center;background:repeating-linear-gradient(135deg,rgba(255,255,255,.5) 0,rgba(255,255,255,.5) 9px,rgba(120,151,102,.08) 9px,rgba(120,151,102,.08) 17px)}.lock-label{text-align:center;color:var(--ink3);font-size:8px}.lock-label svg{width:15px;display:block;margin:0 auto 5px}
+.composer{margin:18px 0 0 64px;padding:16px;background:var(--paper);border:1px solid rgba(255,255,255,.8);border-radius:18px;box-shadow:0 7px 25px rgba(73,104,69,.1);backdrop-filter:blur(20px)}.composer h2{font-size:13px;margin:0}.composer small{display:block;color:var(--ink3);font-size:8px;margin-top:3px}.composer textarea,.composer input,.composer select{width:100%;margin-top:10px;border:1px solid var(--line);background:rgba(255,255,255,.88);border-radius:11px;padding:10px;font:inherit;font-size:10px;color:var(--ink)}.composer textarea{height:100px;resize:vertical;font-size:12px}.moods{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:10px}.mood{border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 3px;color:var(--ink3);font-size:8px;display:grid;place-items:center;gap:3px}.mood svg{width:17px;height:17px}.mood.on{border-color:var(--accent);background:#edf4df;color:var(--ink)}.save{width:100%;border:0;background:var(--accent);color:#fff;border-radius:12px;padding:11px;margin-top:10px;font-size:10px}
+.lock-trigger{width:100%;margin-top:10px;border:1px solid var(--line);background:#fffdf5;color:var(--ink);border-radius:11px;padding:10px 12px;font:inherit;font-size:10px;display:flex;align-items:center;justify-content:space-between}.lock-trigger svg{width:15px}.lock-modal{display:none;position:fixed;inset:0;z-index:300;background:rgba(55,70,45,.32);align-items:center;justify-content:center;padding:18px}.lock-modal.show{display:flex}.lock-dialog{width:min(390px,100%);padding:18px;border-radius:22px;background:#eaf2dc;border:1px solid rgba(255,255,255,.9);box-shadow:0 18px 55px rgba(65,88,52,.22)}.lock-dialog h3{font-size:16px;margin:0}.lock-dialog p{font-size:9px;color:var(--ink2);margin:5px 0 12px}.lock-options{display:grid;gap:6px}.lock-option{width:100%;border:1px solid rgba(118,149,99,.2);background:rgba(255,253,241,.74);border-radius:12px;padding:9px 11px;color:var(--ink);font:inherit;font-size:10px;display:flex;align-items:center;justify-content:space-between}.lock-option::before{content:"";width:12px;height:12px;border:1.5px solid var(--ink3);border-radius:50%;margin-right:9px}.lock-option span{margin-left:auto;color:var(--ink3);font-size:8px}.lock-option.on{background:#d7e7c6;border-color:var(--accent)}.lock-option.on::before{border:4px solid var(--accent);background:white}.lock-actions{display:grid;grid-template-columns:1fr 1.5fr;gap:8px;margin-top:12px}.lock-actions button{border:0;border-radius:11px;padding:10px;font:inherit;font-size:10px}.lock-cancel{background:rgba(255,253,241,.8);color:var(--ink2)}.lock-confirm{background:var(--accent);color:white}
+@media(max-width:560px){body{padding-left:10px;padding-right:10px}.timeline{padding-left:45px}.timeline:before{left:23px}.pin{left:-26px}.time{display:none}.composer{margin-left:45px}.moods{grid-template-columns:repeat(4,1fr)}} 
+</style>
+</head>
+<body><main class="wrap">
+<header class="top">
+ <button class="back" onclick="location.href='/calendar.html'" aria-label="返回日历"><i data-lucide="chevron-left"></i></button>
+ <div class="title"><div class="eyebrow">CALENDAR · DIARY</div><h1 id="dateTitle"></h1></div>
+ <div class="count"><b id="entryCount">0</b>篇</div>
+</header>
+<section class="timeline" id="timeline"></section>
+<section class="composer">
+ <h2>写下这一天</h2><small>以小羊身份记录；福福会通过自己的日记线路写入</small>
+ <textarea id="diaryText" placeholder="今天发生了什么……"></textarea>
+ <div class="moods" id="moods"></div>
+ <input id="diaryTags" placeholder="标签，用逗号分开">
+ <input type="hidden" id="lockFor" value="0"><button class="lock-trigger" id="lockButton" type="button" onclick="openLockModal()"><span>不封存</span><i data-lucide="lock-keyhole"></i></button>
+ <button class="save" onclick="saveDiary()">保存这篇日记</button>
+</section>
+</main>
+<div class="lock-modal" id="lockModal" onclick="if(event.target===this)closeLockModal()"><div class="lock-dialog"><h3>封存这一篇</h3><p>到时间之前，谁都不能打开，包括你自己。</p><div class="lock-options" id="lockOptions"></div><div class="lock-actions"><button class="lock-cancel" type="button" onclick="closeLockModal()">取消</button><button class="lock-confirm" type="button" onclick="confirmLock()">选定</button></div></div></div>
+<script>
+const params=new URLSearchParams(location.search),selected=params.get('date')||new Date().toLocaleDateString('sv-SE');
+const moodOptions=[
+ {key:'love',name:'心动',icon:'heart',color:'#e9859e'},{key:'happy',name:'开心',icon:'smile',color:'#efbd58'},
+ {key:'calm',name:'平静',icon:'waves',color:'#86ad83'},{key:'tired',name:'疲惫',icon:'moon',color:'#78a8d2'},
+ {key:'low',name:'低落',icon:'cloud-rain',color:'#8d82b8'},{key:'angry',name:'生气',icon:'frown',color:'#db6b63'},
+ {key:'thinking',name:'思考',icon:'brain',color:'#7893a7'},{key:'surprised',name:'惊喜',icon:'sparkles',color:'#e6a943'},
+ {key:'sad',name:'难过',icon:'cloud',color:'#71899d'},{key:'passionate',name:'热烈',icon:'flame',color:'#ed8651'},
+ {key:'healing',name:'治愈',icon:'sprout',color:'#70b697'},{key:'relaxed',name:'放松',icon:'gamepad-2',color:'#9b83c5'},
+ {key:'missing',name:'想你',icon:'message-circle-heart',color:'#d9899f'},{key:'bored',name:'无聊',icon:'circle-ellipsis',color:'#9aa49b'},
+ {key:'lucky',name:'幸运',icon:'clover',color:'#79ad72'},{key:'fulfilled',name:'充实',icon:'list-checks',color:'#6f9e87'},
+ {key:'irritable',name:'烦躁',icon:'zap',color:'#df8a58'},{key:'heartache',name:'心疼',icon:'heart-handshake',color:'#c97b88'},
+ {key:'free',name:'自由',icon:'bird',color:'#72a9b7'},{key:'expecting',name:'期待',icon:'telescope',color:'#7f91bd'},
+ {key:'sweet',name:'甜蜜',icon:'candy',color:'#d990aa'},{key:'craving',name:'嘴馋',icon:'utensils',color:'#c89762'},
+ {key:'aggrieved',name:'委屈',icon:'cloud-rain',color:'#8c91b1'},{key:'embarrassed',name:'尴尬',icon:'meh',color:'#b28d79'}
+],moodMap=Object.fromEntries(moodOptions.map(x=>[x.key,x])),chosen=[];
+const legacy={'🥰':'love','😊':'happy','😌':'calm','😪':'tired','😔':'low','😤':'angry','🤔':'thinking','✨':'surprised','🌧️':'sad','🔥':'passionate','🌱':'healing','🎮':'relaxed'};
+const normalize=value=>(Array.isArray(value)?value:(value?[value]:[])).map(x=>legacy[x]||x).filter(x=>moodMap[x]).slice(0,3);
+const esc=HomeCommon.escapeHtml;
+const lockChoices=[['0','不封存'],['3600','1 小时'],['21600','6 小时'],['86400','一天'],['604800','一周'],['2592000','一个月'],['15552000','半年']];let pendingLock='0';
+function openLockModal(){pendingLock=lockFor.value;renderLockOptions();lockModal.classList.add('show')}
+function closeLockModal(){lockModal.classList.remove('show')}
+function renderLockOptions(){lockOptions.innerHTML=lockChoices.map(([value,label])=>`<button type="button" class="lock-option${pendingLock===value?' on':''}" onclick="pendingLock='${value}';renderLockOptions()">${label}<span>${value==='0'?'现在可见':'到期打开'}</span></button>`).join('')}
+function confirmLock(){lockFor.value=pendingLock;lockButton.querySelector('span').textContent=lockChoices.find(x=>x[0]===pendingLock)?.[1]||'不封存';closeLockModal()}
+const sample=[
+ {id:'sample-open',entry_date:'2026-07-29',created_at:new Date('2026-07-29T22:59:00').getTime()/1000,author:'sheep',mood:['happy','healing'],content:'傍晚把窗户打开以后，风把桌边的纸吹得轻轻响。今天没有发生什么大事，但我把一直拖着的小事情做完了，心里忽然空出了一块安静的地方。',comment_count:2,comments:[{author:'fufu',text:'我也听见风吹纸页的声音了。你把那件小事做完的时候，我替你悄悄开心了一下。'},{author:'sheep',text:'原来你有注意到呀，那就把今天这一小块安静一起收好。'}]},
+ {id:'sample-lock',entry_date:'2026-07-29',created_at:new Date('2026-07-29T01:17:00').getTime()/1000,author:'fufu',mood:['calm'],content:'',locked:true,unlock_at:new Date('2026-08-05T01:17:00').getTime()/1000,comment_count:0}
+],postCache=new Map();
+function moodLabels(moods){return normalize(moods).map(key=>{const m=moodMap[key];return `<span class="mood-tag"><i data-lucide="${m.icon}" style="color:${m.color}"></i>${m.name}</span>`}).join('')}
+function renderPosts(posts){
+ const list=posts.length?posts:(selected==='2026-07-29'?sample:[]);
+ postCache.clear();list.forEach(p=>postCache.set(String(p.id),p));
+ entryCount.textContent=list.length;
+ timeline.innerHTML=list.length?list.map(p=>{const time=new Date(p.created_at*1000).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false}),author=p.coauthored?'共同写':p.author==='fufu'?'福福':'小羊';
+  return `<div class="entry-row"><span class="time">${time}</span><i class="pin"></i>${p.locked?`<article class="card locked"><div class="lock-label"><i data-lucide="lock-keyhole"></i>已封存 · ${new Date(p.unlock_at*1000).toLocaleDateString('zh-CN')} 打开</div></article>`:`<article class="card openable" id="post-${esc(p.id)}" onclick="togglePost('${esc(p.id)}')"><div class="card-head"><span class="author">${author}</span><span class="mood-tags">${moodLabels(p.mood)}</span></div><p>${esc(p.content)}</p><button class="comment" id="comment-button-${esc(p.id)}" type="button" onclick="event.stopPropagation();togglePost('${esc(p.id)}')">${p.comment_count||0} 条评论 · 点开查看</button><div class="comments-panel" id="comments-${esc(p.id)}"></div></article>`}</div>`}).join(''):'<div class="card"><p>这一天还没有日记。可以从下面开始写第一篇。</p></div>';
+ if(window.lucide)lucide.createIcons();
+}
+async function togglePost(id){
+ const card=document.getElementById('post-'+id),panel=document.getElementById('comments-'+id);if(!card||!panel)return;
+ const button=document.getElementById('comment-button-'+id);
+ if(card.classList.contains('expanded')){card.classList.remove('expanded');if(button)button.textContent=`${postCache.get(String(id))?.comment_count||0} 条评论 · 点开查看`;return}
+ let post=postCache.get(String(id));
+ if(!String(id).startsWith('sample-')&&!post.comments){try{const r=await fetch('/api/diary/post?id='+encodeURIComponent(id));if(r.ok){post=await r.json();postCache.set(String(id),post)}}catch(e){}}
+ const comments=post.comments||[];
+ panel.innerHTML=`<div class="comments-list">${comments.length?comments.map(c=>`<div class="comment-item"><b>${c.author==='fufu'?'福福':'小羊'}</b>${esc(c.text)}</div>`).join(''):'<div class="comment-item">还没有评论。</div>'}</div>${String(id).startsWith('sample-')?'':`<div class="comment-form" onclick="event.stopPropagation()"><input id="comment-input-${esc(id)}" placeholder="写下评论……"><button type="button" onclick="sendComment('${esc(id)}')">发送</button></div>`}`;
+ card.classList.add('expanded');
+ if(button)button.textContent=`${comments.length} 条评论 · 收起`;
+}
+async function sendComment(id){
+ const input=document.getElementById('comment-input-'+id),text=input?.value.trim();if(!text)return;
+ const r=await fetch('/api/diary/comment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,text,author:'sheep'})});
+ if(r.ok){const post=postCache.get(String(id));post.comments=[...(post.comments||[]),(await r.json()).comment];post.comment_count=post.comments.length;document.getElementById('post-'+id)?.classList.remove('expanded');togglePost(id)}
+}
+function renderMoods(){moods.innerHTML=moodOptions.map(m=>`<button class="mood${chosen.includes(m.key)?' on':''}" onclick="toggleMood('${m.key}')"><i data-lucide="${m.icon}" style="color:${m.color}"></i>${m.name}</button>`).join('');if(window.lucide)lucide.createIcons()}
+function toggleMood(key){const i=chosen.indexOf(key);if(i>=0)chosen.splice(i,1);else if(chosen.length<3)chosen.push(key);renderMoods()}
+async function load(){
+ renderPosts([]);
+ try{
+  const r=await fetch('/api/diary');if(!r.ok)throw new Error('diary');
+  const data=await r.json(),posts=(data.posts||[]).filter(p=>(p.entry_date||'')===selected);
+  renderPosts(posts);
+ }catch(error){renderPosts([])}
+}
+async function saveDiary(){
+ const content=diaryText.value.trim();if(!content)return;
+ const seconds=Number(lockFor.value)||0,tags=diaryTags.value.split(/[,，]/).map(x=>x.trim()).filter(Boolean);
+ await fetch('/api/diary/write',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content,mood:[...chosen],entry_date:selected,author:'sheep',coauthored:false,tags,unlock_at:seconds?Date.now()/1000+seconds:0})});
+ const month=selected.slice(0,7),calendar=await fetch('/api/calendar/moods?month='+month).then(r=>r.json()),old=calendar[selected],dayMoods=old&&typeof old==='object'&&!Array.isArray(old)?old:{sheep:normalize(old),fufu:[]};
+ dayMoods.sheep=[...chosen];
+ await fetch('/api/calendar/mood',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:selected,mood:dayMoods})});
+ diaryText.value='';diaryTags.value='';chosen.length=0;renderMoods();await load();
+}
+window.addEventListener('DOMContentLoaded',()=>{dateTitle.textContent=new Date(selected+'T12:00:00').toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'long'});renderCoreNav('calendar');renderMoods();load();});
+</script></body></html>

@@ -10,9 +10,9 @@
 <meta name="theme-color" content="var(--bg, #e8f0fe)">
 <title>记忆角 · Our Home</title>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<link rel="stylesheet" href="/static/common.css?v=20">
+<script src="/static/common.js?v=2"></script>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background: var(--bg, var(--bg, #e8f0fe)) var(--bg-img, url('/static/bg.jpg')) center/cover fixed;
@@ -259,9 +259,10 @@
 
   .delete-btn:active { opacity: 0.7; }
 </style>
-<script src="/static/theme.js?v=32"></script>
+<link rel="stylesheet" href="/static/memory-ui.css?v=1">
+<script src="/static/theme.js?v=40"></script>
 </head>
-<body>
+<body class="memory-page memory-category">
 
 <div class="header">
   <button class="back-btn" onclick="location.href='/memory.html'">
@@ -280,6 +281,7 @@
   <div class="modal" onclick="event.stopPropagation()">
     <div class="modal-handle"></div>
     <div class="modal-content" id="modalContent"></div>
+    <div id="modalWhy" style="margin-top:14px;padding:12px;border-left:3px solid var(--accent);background:var(--soft);border-radius:0 10px 10px 0;font-size:13px;line-height:1.7;display:none"></div>
     <div class="modal-tags" id="modalTags"></div>
     <div class="modal-meta" id="modalMeta"></div>
     <div class="modal-cat-row">
@@ -288,7 +290,7 @@
       <button class="save-btn" id="modalSaveBtn" onclick="saveCategory()">移动</button>
     </div>
     <div class="modal-actions">
-      <button class="delete-btn" id="modalDeleteBtn" onclick="deleteMemory()">删除这条记忆</button>
+      <button class="delete-btn" id="modalDeleteBtn" onclick="deleteMemory()">归档这条记忆</button>
     </div>
   </div>
 </div>
@@ -327,7 +329,7 @@ async function load() {
     el.innerHTML = mems.map(m => {
       const impClass = m.importance >= 8 ? 'high' : '';
       const pin = m.pinned ? '<span class="pin">📌</span>' : '';
-      const typeTxt = m.type === 'permanent' ? '永久' : '动态';
+      const typeTxt = m.tier || m.thread || m.category || '记忆';
       const tags = (m.tags || []).map(t => `<span class="tag">${escHtml(t)}</span>`).join('');
 
       return `
@@ -353,12 +355,16 @@ async function load() {
 function showDetail(m) {
   currentMemory = m;
   document.getElementById('modalContent').textContent = m.content;
+  const whyEl = document.getElementById('modalWhy');
+  whyEl.textContent = m.why_remembered ? '为什么记住：' + m.why_remembered : '';
+  whyEl.style.display = m.why_remembered ? '' : 'none';
   const tagsEl = document.getElementById('modalTags');
   tagsEl.innerHTML = (m.tags || []).map(t => `<span class="modal-tag">${t}</span>`).join('');
   const meta = [];
   if (m.created) meta.push('创建: ' + m.created.slice(0, 10));
   if (m.last_active) meta.push('活跃: ' + m.last_active.slice(0, 10));
-  if (m.type) meta.push(m.type === 'permanent' ? '永久' : '动态');
+  if (m.tier) meta.push(m.tier);
+  if (m.thread) meta.push('主题: ' + m.thread);
   document.getElementById('modalMeta').textContent = meta.join(' · ');
 
   const sel = document.getElementById('modalCatSelect');
@@ -398,10 +404,10 @@ async function saveCategory() {
 
 async function deleteMemory() {
   if (!currentMemory) return;
-  if (!confirm('确定删除这条记忆吗？')) return;
+  if (!confirm('确定归档这条记忆吗？归档后不会参与日常召回。')) return;
 
   const btn = document.getElementById('modalDeleteBtn');
-  btn.textContent = '删除中...';
+  btn.textContent = '归档中...';
 
   await fetch('/api/memory/delete', {
     method: 'POST',
@@ -409,7 +415,7 @@ async function deleteMemory() {
     body: JSON.stringify({ id: currentMemory.id })
   });
 
-  btn.textContent = '已删除';
+  btn.textContent = '已归档';
 
   setTimeout(() => {
     document.getElementById('modalOverlay').classList.remove('open');
@@ -423,11 +429,7 @@ function closeModal(e) {
   }
 }
 
-function escHtml(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-}
+const escHtml = HomeCommon.escapeHtml;
 
 load();
 </script>

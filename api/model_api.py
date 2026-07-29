@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """换模型API（9916）：手机端给福福换班。
 GET  /api/model/state          当前配置的模型 + 会话心跳
-POST /api/model/switch {model} 改settings.json + 在lifeline留交接条 + 重启bot
+GET  /api/model/handoff        当前统一交接状态
+POST /api/model/switch {model} 写交接包 + 改settings.json + 重启bot
 """
-import json, time, re, subprocess, threading
+import json, time, subprocess, threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
+import handoff
+
 SETTINGS = '/root/.claude/settings.json'
-LIFELINE = '/root/.claude/projects/-root/memory/lifeline.md'
 MODEL_STATE = '/var/www/home/data/model_state.json'
 PREFS = '/var/www/home/data/fufu_prefs.json'
 
@@ -31,32 +33,39 @@ def current_key():
         pass
     return None
 
+def restore_model(model_id):
+    if not model_id:
+        return
+    settings = read_settings()
+    settings['model'] = model_id
+    with open(SETTINGS, 'w') as f:
+        json.dump(settings, f, ensure_ascii=False, indent=2)
+
 def do_restart(target_key):
-    """留交接条 → 改配置 → 延迟重启bot"""
+    """写统一交接包 → 改配置 → 延迟重启 bot。生活线不再塞临时通知。"""
     m = MODELS[target_key]
-    now = time.strftime('%m-%d %H:%M')
-    # 1. lifeline留交接条（塞进"重启后的你先读这条"块的开头）
-    try:
-        txt = open(LIFELINE).read()
-        note = f"- **⚠️{now} 小羊从网页端换班到{m['name']}并重启了会话**——不是事故，是她按的按钮。醒来先照常读记忆，然后跟她报到。\n"
-        marker = '## ⚠️重启后的你先读这条\n'
-        if marker in txt:
-            txt = txt.replace(marker, marker + note, 1)
-        else:
-            txt = note + txt
-        open(LIFELINE, 'w').write(txt)
-    except Exception:
-        pass
-    # 2. 改settings.json
+    old_model = read_settings().get('model', '')
+    handoff.prepare(
+        reason='model_switch',
+        old_session_id=old_model,
+        target_model=m['id'],
+        events=[],
+    )
+    # 1. 改 settings.json
     s = read_settings()
     s['model'] = m['id']
     with open(SETTINGS, 'w') as f:
         json.dump(s, f, ensure_ascii=False, indent=2)
-    # 3. 延迟2秒重启（先让HTTP响应返回）
+    handoff.mark_starting()
+    # 2. 延迟2秒重启（先让 HTTP 响应返回）
     def _restart():
         time.sleep(2)
-        subprocess.Popen(['bash', '/root/start-bot.sh'],
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            subprocess.Popen(['bash', '/root/start-bot.sh'],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as exc:
+            restore_model(old_model)
+            handoff.rollback(f'start-bot failed: {exc}')
     threading.Thread(target=_restart, daemon=True).start()
 
 class H(BaseHTTPRequestHandler):
@@ -71,6 +80,9 @@ class H(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
+        if self.path.startswith('/api/model/handoff'):
+            self._json(200, handoff.public_view(handoff.load_state()))
+            return
         if self.path.startswith('/api/model/prefs'):
             try:
                 p = json.load(open(PREFS))
@@ -117,8 +129,15 @@ class H(BaseHTTPRequestHandler):
                     return self._json(400, {'err': 'unknown model'})
                 do_restart(key)
                 self._json(200, {'ok': True, 'switching_to': MODELS[key]['name'],
-                                 'msg': '交接条已留，福福正在换衣服，约20秒后上岗'})
+                                 'msg': '交接包已准备，福福正在换衣服，约20秒后上岗'})
             except Exception as e:
+                if handoff.pending():
+                    try:
+                        state = handoff.load_state()
+                        restore_model(state.get('old_session_id', ''))
+                    except Exception:
+                        pass
+                    handoff.rollback(f'model switch failed: {e}')
                 self._json(500, {'err': str(e)})
         else:
             self._json(404, {'err': 'not found'})

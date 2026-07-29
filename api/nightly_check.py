@@ -11,9 +11,11 @@
 import json, os, subprocess, sys, time
 from datetime import datetime, timedelta
 
+from memory_config import BRAIN_DATA, LIFELINE_CANDIDATES
+
 DIARY_DIR = '/var/www/home/data/diary'
-LIFELINE = '/root/.claude/projects/-var-www-home-api/memory/lifeline.md'
-BRAIN_JSON = '/var/www/home/brain-data.json'
+LIFELINE = str(LIFELINE_CANDIDATES[0])
+BRAIN_JSON = str(BRAIN_DATA)
 ENV = '/root/.claude/channels/telegram/.env'
 CHAT_ID = '8519905209'
 STATE = '/var/www/home/data/nightly_check.json'
@@ -112,7 +114,7 @@ def main():
     notify('🌙 睡前的活还差这些（这条是机器发的，她不用管）：\n'
            + '\n'.join('· ' + m for m in missing)
            + f'\n\n（{day} 的账｜要做：更新lifeline / 写日记 / 记LMC-5 / '
-             'gen_brain_data.py｜日记要多记好的）')
+             'gen_brain_data.py｜福福写日记按 DIARY_AI_PROTOCOL.md，不使用前端作者切换｜日记要多记好的）')
 
 
 if __name__ == '__main__':

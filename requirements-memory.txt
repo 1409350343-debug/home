@@ -1,0 +1,4 @@
+# 记忆检索和中文分词
+jieba>=0.42,<1
+
+# lmc5 不是此仓库的一部分。请按 MEMORY_SYSTEM.md 配置 LMC5_SRC。

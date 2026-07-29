@@ -3,6 +3,7 @@
 import json, sys, time, os
 
 OUT = '/var/www/home/data/oplog.jsonl'
+ACTIVITY_OUT = '/var/www/home/api/timeline.json'
 
 def summarize(tool, ti):
     """压一行人话摘要"""
@@ -28,6 +29,41 @@ def summarize(tool, ti):
         return {'kind': 'read', 'desc': '看文件', 'detail': ti.get('file_path') or '?'}
     return {'kind': 'other', 'desc': tool, 'detail': ''}
 
+def human_activity(entry):
+    """只把小羊看得懂的生活活动放进首页，不展示技术操作流水。"""
+    raw = json.dumps(entry, ensure_ascii=False).lower()
+    rules = (
+        (('aisay', 'ai say'), '去了 AI Say 看看', 'message-circle'),
+        (('生态瓶', 'turtle', 'fishing'), '打开了生态瓶', 'sprout'),
+        (('memory', 'lmc5', 'lifeline', '记忆'), '整理并记录了记忆', 'brain'),
+        (('read-deep', 'book-notebook', '/vault/', '书房'), '整理了陪读和书籍笔记', 'book-open'),
+        (('diary', '日记'), '整理了今天的日记', 'book-heart'),
+    )
+    for words, text, icon in rules:
+        if any(word in raw for word in words):
+            return {'ts': time.time(), 'text': text, 'icon': icon}
+    return None
+
+def append_activity(activity):
+    if not activity:
+        return
+    try:
+        with open(ACTIVITY_OUT) as f:
+            items = json.load(f)
+    except Exception:
+        items = []
+    # 同一种活动半小时内只显示一次，避免首页被重复工具调用刷屏。
+    if items and items[-1].get('text') == activity['text'] and \
+            activity['ts'] - items[-1].get('ts', 0) < 1800:
+        return
+    # 首页活动流水与记忆系统的近层统一为7天；第8天自动退出首页。
+    cutoff = time.time() - 7 * 86400
+    items = [item for item in items if item.get('ts', 0) > cutoff]
+    items.append(activity)
+    os.makedirs(os.path.dirname(ACTIVITY_OUT), exist_ok=True)
+    with open(ACTIVITY_OUT, 'w') as f:
+        json.dump(items, f, ensure_ascii=False, indent=1)
+
 def main():
     try:
         data = json.load(sys.stdin)
@@ -45,6 +81,7 @@ def main():
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, 'a') as f:
         f.write(json.dumps(entry, ensure_ascii=False) + '\n')
+    append_activity(human_activity(entry))
 
 if __name__ == '__main__':
     main()

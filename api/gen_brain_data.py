@@ -6,31 +6,36 @@ import re
 import sqlite3
 import time
 
-LMC5_DB = '/var/www/home/api/lmc5_memory.db'
-OUT = '/var/www/home/brain-data.json'
+from memory_config import BRAIN_DATA, LIFELINE_CANDIDATES, LMC5_DB
+from memory_schema import ensure_memory_schema
 
-THREAD_TO_TIER = {
-    'core': 'permanent',
-    'note': 'dynamic',
-    'feel': 'feel',
-    'archive': 'archive',
-}
-TIER_ZH = {
-    'permanent': '核心',
-    'dynamic': '流动',
-    'feel': '感受',
-    'archive': '归档',
-}
+LMC5_DB = str(LMC5_DB)
+OUT = str(BRAIN_DATA)
+
+def to_ui_valence(value):
+    """LMC-5 的 -1~1 情绪值转换为记忆屋使用的 0~1。"""
+    if value is None:
+        return 0.5
+    try:
+        normalized = (float(value) + 1.0) / 2.0
+    except (TypeError, ValueError):
+        return 0.5
+    return max(0.0, min(1.0, normalized))
 
 
 def load_memories():
     conn = sqlite3.connect(LMC5_DB)
     conn.row_factory = sqlite3.Row
+    ensure_memory_schema(conn)
     cur = conn.cursor()
-    cur.execute('''
+    columns = {
+        row['name'] for row in conn.execute('PRAGMA table_info(memories)').fetchall()
+    }
+    tier_column = 'tier' if 'tier' in columns else 'NULL AS tier'
+    cur.execute(f'''
         SELECT id, title, content, thread, category, tags_json,
                valence, arousal, hit_count, created_at, updated_at,
-               status
+               status, why_remembered, {tier_column}
         FROM memories
         ORDER BY id DESC
     ''')
@@ -43,23 +48,23 @@ def load_memories():
             except Exception:
                 pass
 
-        tier = THREAD_TO_TIER.get(row['thread'] or 'note', 'dynamic')
-        if row['status'] == 'archived':
-            tier = 'archive'
+        tier = row['tier'] or ('archive' if row['status'] == 'archived' else 'dynamic')
 
         buckets.append({
             'id': str(row['id']),
             'name': row['title'] or '',
             'title': row['title'] or row['content'][:14],
             'tier': tier,
+            'thread': row['thread'] or '',
             'category': row['category'] or '',
+            'status': row['status'] or '',
             'tags': tags if isinstance(tags, list) else [tags],
             'importance': 5,
             'created': row['created_at'] or '',
             'last_active': row['updated_at'] or '',
-            'valence': float(row['valence'] or 0.5),
+            'valence': to_ui_valence(row['valence']),
             'activation': int(row['hit_count'] or 0),
-            'why': '',
+            'why': row['why_remembered'] or '',
             'content': row['content'] or '',
         })
     conn.close()
@@ -70,10 +75,7 @@ def main():
     buckets = load_memories()
 
     lifeline = ''
-    lf_candidates = [
-        '/root/.claude/projects/-var-www-home-api/memory/lifeline.md',
-        '/root/.claude/projects/-root/memory/lifeline.md',
-    ]
+    lf_candidates = [str(path) for path in LIFELINE_CANDIDATES]
     lf = next((p for p in lf_candidates if os.path.exists(p)), lf_candidates[0])
     if os.path.exists(lf):
         raw = open(lf, encoding='utf-8').read()

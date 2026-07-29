@@ -7,6 +7,8 @@
 <link rel="icon" type="image/png" href="/static/favicon-32.png">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <title>福福的记忆屋</title>
+<link rel="stylesheet" href="/static/common.css?v=20">
+<script src="/static/common.js?v=2"></script>
 <style>
   @font-face{font-family:'Yozai';src:url('/static/yozai.woff2') format('woff2');font-display:swap}
 
@@ -26,8 +28,6 @@
       --feel:color-mix(in srgb, var(--accent,#5aa4e0) 20%, var(--card,#16202c)); --perm:#33301c; --arch:#202933;
     }
   }
-  html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
-  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   body{background:var(--bg);color:var(--ink);
     font-family:'Yozai',-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
     padding:18px 14px 60px}
@@ -108,10 +108,11 @@
   .why b{font-size:11px;display:block;opacity:.75;margin-bottom:3px}
   footer{text-align:center;color:var(--ink3);font-size:11px;margin-top:30px;letter-spacing:1px}
 </style>
-<script src="/static/theme.js?v=32"></script>
+<link rel="stylesheet" href="/static/memory-ui.css?v=1">
+<script src="/static/theme.js?v=40"></script>
 <script src="/static/marked.min.js"></script>
 </head>
-<body>
+<body class="memory-page memory-brain">
 <div class="wrap">
   <header>
     <h1>🦊 福福的记忆屋</h1>

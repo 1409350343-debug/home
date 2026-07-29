@@ -1,572 +1,101 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<link rel="icon" type="image/png" href="/static/favicon-32.png">
-<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="var(--bg, #e8f0fe)">
-<title>日历 · Our Home</title>
-<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><title>CALENDAR · DIARY</title>
+<link rel="icon" href="/static/favicon-32.png"><script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<link rel="stylesheet" href="/static/common.css?v=20"><link rel="stylesheet" href="/static/core-nav.css?v=14">
+<script src="/static/common.js?v=2"></script><script src="/static/core-nav.js?v=4"></script><script src="/static/theme.js?v=40"></script>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: var(--bg, var(--bg, #e8f0fe)) var(--bg-img, url('/static/bg.jpg')) center/cover fixed;
-    min-height: 100vh;
-    color: var(--ink, #3a4a6b);
-    padding-bottom: 40px;
-  }
-
-  .header {
-    display: flex; align-items: center;
-    padding: 16px 20px 12px; gap: 12px;
-  }
-
-  .back-btn {
-    display: flex; align-items: center; justify-content: center;
-    width: 36px; height: 36px;
-    background: rgba(255,255,255,0.6); border-radius: 12px;
-    border: none; cursor: pointer; color: var(--accent, #5b7ec2);
-  }
-
-  .header h1 { font-size: 20px; font-weight: 600; }
-  .header .days-together {
-    margin-left: auto; font-size: 12px; color: #8aaee0;
-    background: rgba(255,255,255,0.6); padding: 4px 12px;
-    border-radius: 20px;
-  }
-
-  .glass {
-    background: rgba(255,255,255,0.85);
-    backdrop-filter: blur(20px);
-    border-radius: 16px;
-    padding: 18px 20px;
-    margin: 0 16px 12px;
-    border: 1px solid rgba(255,255,255,0.9);
-    box-shadow: 0 2px 10px rgba(100,140,210,0.07);
-  }
-
-  .section-label {
-    font-size: 13px; font-weight: 600; color: var(--accent, #5b7ec2);
-    margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
-  }
-
-  .section-label svg { width: 14px; height: 14px; }
-
-  /* Month nav */
-  .month-nav {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 14px;
-  }
-
-  .month-nav button {
-    background: none; border: none; cursor: pointer;
-    color: var(--accent, #5b7ec2); padding: 4px;
-  }
-
-  .month-nav .month-label { font-size: 15px; font-weight: 600; }
-
-  /* Calendar grid */
-  .cal-weekdays {
-    display: grid; grid-template-columns: repeat(7, 1fr);
-    text-align: center; font-size: 11px; color: var(--line, #b0bdd4);
-    margin-bottom: 6px;
-  }
-
-  .cal-grid {
-    display: grid; grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
-  }
-
-  .cal-day {
-    aspect-ratio: 1; display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    border-radius: 10px; cursor: pointer;
-    font-size: 13px; position: relative;
-    transition: background 0.15s;
-  }
-
-  .cal-day:active { background: rgba(100,140,210,0.08); }
-  .cal-day.today { background: rgba(91,126,194,0.12); font-weight: 700; }
-  .cal-day.other-month { color: #d0d8e8; }
-  .cal-day .mood { font-size: 10px; line-height: 1; margin-top: 1px; }
-  .cal-day .special-dot {
-    width: 4px; height: 4px; border-radius: 50%;
-    background: #e06b8a; position: absolute; bottom: 3px;
-  }
-
-  /* Mood picker */
-  .mood-picker {
-    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.3); z-index: 100;
-    align-items: center; justify-content: center;
-  }
-
-  .mood-picker.show { display: flex; }
-
-  .mood-picker-inner {
-    background: #fff; border-radius: 20px; padding: 20px;
-    width: 280px; text-align: center;
-  }
-
-  .mood-picker-inner .title {
-    font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--ink, #3a4a6b);
-  }
-
-  .mood-options {
-    display: grid; grid-template-columns: repeat(5, 1fr);
-    gap: 8px; margin-bottom: 12px;
-  }
-
-  .mood-options span {
-    font-size: 24px; cursor: pointer; padding: 6px;
-    border-radius: 10px; transition: background 0.12s;
-  }
-
-  .mood-options span:active { background: rgba(100,140,210,0.15); }
-
-  .mood-picker-inner .clear-btn {
-    font-size: 12px; color: var(--line, #b0bdd4); cursor: pointer;
-    border: none; background: none;
-  }
-
-  /* Timeline */
-  .timeline { position: relative; padding: 0 10px; }
-
-  .timeline::before {
-    content: ''; position: absolute;
-    left: 50%; width: 2px; top: 0; bottom: 0;
-    background: rgba(100,140,210,0.12);
-    transform: translateX(-50%);
-  }
-
-  .tl-item {
-    display: flex; margin-bottom: 16px; position: relative;
-    align-items: flex-start;
-  }
-
-  .tl-item.fox { flex-direction: row; }
-  .tl-item.sheep { flex-direction: row-reverse; }
-
-  .tl-item .tl-content {
-    width: 44%; padding: 10px 14px;
-    background: rgba(255,255,255,0.9);
-    border-radius: 12px; font-size: 13px;
-    line-height: 1.6; position: relative;
-    border: 1px solid rgba(100,140,210,0.08);
-  }
-
-  .tl-item.fox .tl-content { margin-right: auto; }
-  .tl-item.sheep .tl-content { margin-left: auto; }
-
-  .tl-dot {
-    width: 10px; height: 10px; border-radius: 50%;
-    position: absolute; left: 50%;
-    transform: translateX(-50%); top: 12px;
-    z-index: 1;
-  }
-
-  .tl-item.fox .tl-dot { background: #dc8296; }
-  .tl-item.sheep .tl-dot { background: #8aaee0; }
-
-  .tl-meta {
-    font-size: 10px; color: var(--line, #b0bdd4); margin-top: 4px;
-  }
-
-  .tl-side-label {
-    font-size: 10px; font-weight: 600; margin-bottom: 2px;
-  }
-
-  .tl-item.fox .tl-side-label { color: #dc8296; }
-  .tl-item.sheep .tl-side-label { color: #8aaee0; }
-
-  .tl-add-row {
-    display: flex; gap: 8px; margin-top: 12px;
-  }
-
-  .tl-add-row input {
-    flex: 1; padding: 8px 12px; border-radius: 20px;
-    border: 1px solid rgba(100,140,210,0.15);
-    background: rgba(255,255,255,0.8);
-    font-size: 12px; color: var(--ink, #3a4a6b); outline: none;
-  }
-
-  .tl-add-row select {
-    padding: 8px 10px; border-radius: 20px;
-    border: 1px solid rgba(100,140,210,0.15);
-    background: rgba(255,255,255,0.8);
-    font-size: 12px; color: var(--ink, #3a4a6b); outline: none;
-  }
-
-  .tl-add-row button {
-    padding: 8px 14px; border-radius: 20px;
-    border: none; background: var(--accent, #5b7ec2);
-    color: #fff; font-size: 12px; cursor: pointer;
-  }
-
-  /* Wishes */
-  .wish-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 0;
-    border-bottom: 1px solid rgba(100,140,210,0.06);
-  }
-
-  .wish-item:last-child { border-bottom: none; }
-
-  .wish-check {
-    width: 20px; height: 20px; border-radius: 50%;
-    border: 2px solid var(--line, #b0bdd4); cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; transition: all 0.15s;
-  }
-
-  .wish-check.done {
-    background: var(--accent, #5b7ec2); border-color: var(--accent, #5b7ec2);
-  }
-
-  .wish-check.done::after {
-    content: '✓'; color: #fff; font-size: 12px;
-  }
-
-  .wish-text { flex: 1; font-size: 13px; line-height: 1.5; }
-  .wish-text.done { text-decoration: line-through; color: var(--line, #b0bdd4); }
-
-  .wish-tag {
-    font-size: 10px; padding: 2px 8px; border-radius: 10px;
-  }
-
-  .wish-tag.plan { background: rgba(91,126,194,0.12); color: var(--accent, #5b7ec2); }
-  .wish-tag.todo { background: rgba(220,130,150,0.12); color: #c26b8a; }
-  .wish-tag.wish { background: rgba(160,200,100,0.15); color: #7a9944; }
-
-  .wish-del {
-    font-size: 16px; color: #d0d8e8; cursor: pointer;
-    border: none; background: none; padding: 0 4px;
-  }
-
-  .wish-add-row {
-    display: flex; gap: 8px; margin-top: 12px;
-  }
-
-  .wish-add-row input {
-    flex: 1; padding: 8px 12px; border-radius: 20px;
-    border: 1px solid rgba(100,140,210,0.15);
-    background: rgba(255,255,255,0.8);
-    font-size: 12px; color: var(--ink, #3a4a6b); outline: none;
-  }
-
-  .wish-add-row select {
-    padding: 8px 10px; border-radius: 20px;
-    border: 1px solid rgba(100,140,210,0.15);
-    background: rgba(255,255,255,0.8);
-    font-size: 12px; color: var(--ink, #3a4a6b); outline: none;
-  }
-
-  .wish-add-row button {
-    padding: 8px 14px; border-radius: 20px;
-    border: none; background: var(--accent, #5b7ec2);
-    color: #fff; font-size: 12px; cursor: pointer;
-  }
-
-  .empty-hint {
-    text-align: center; color: #c0ccdf;
-    font-size: 12px; padding: 20px 0;
-  }
+:root{--accent:#5b8fd4;--ink:#2b4968;--ink2:#587491;--ink3:#879cb3;--line:rgba(119,149,181,.22)}
+body{margin:0;background:#d7e1e9 url('/static/bg-butterfly.jpg') center/cover fixed;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:0 16px}.wrap{max-width:680px;margin:auto}.head{padding:24px 2px 12px;display:flex;align-items:end;justify-content:space-between}.head h1{margin:0;font-size:23px;font-weight:550}.head small{color:var(--ink3)}
+.glass{background:rgba(255,255,255,.62);border:1px solid rgba(255,255,255,.75);border-radius:20px;box-shadow:0 7px 25px rgba(73,104,139,.12);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px)}
+.cal{padding:16px}.month{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}.month button,.round{border:0;background:#e8efdb;color:#729763;border-radius:10px;width:30px;height:30px}.week,.days{display:grid;grid-template-columns:repeat(7,1fr);text-align:center}.week{font-size:10px;color:var(--ink3);margin-bottom:4px}.day{min-height:57px;border-radius:11px;padding-top:9px;font-size:12px;cursor:pointer;position:relative;transition:background .2s,color .2s}.day.other{opacity:.25}.day.today{background:#e8efdb;color:#55704e}.day.selected{background:var(--accent);color:white}.mood-dots{position:absolute;bottom:7px;display:flex;gap:3px;justify-content:center}.mood-dots.sheep{right:51%}.mood-dots.fufu{left:51%}.mood-dot{width:5px;height:5px;border-radius:50%}.mood-dots.fufu .mood-dot{border-radius:1.5px}.day .diary-mark{position:absolute;width:3px;height:3px;border-radius:50%;background:currentColor;opacity:.42;right:7px;top:7px}
+.datebar,.entries{display:none}
+.sheetbg{display:none;position:fixed;inset:0;z-index:120;background:rgba(25,45,68,.35);align-items:flex-end}.sheetbg.show{display:flex}.sheet{width:100%;max-width:680px;margin:auto;background:#f7fafc;border-radius:22px 22px 0 0;padding:18px 17px calc(24px + env(safe-area-inset-bottom))}.sheet h3{margin:0 0 5px}.mood-hint{font-size:10px;color:var(--ink3);margin:0 0 10px}.author-tabs{display:grid;grid-template-columns:1fr 1fr;gap:5px;background:#e8eef4;border-radius:12px;padding:4px;margin:10px 0}.author-tabs button{border:0;border-radius:9px;background:transparent;color:var(--ink3);padding:8px;font-size:12px}.author-tabs button.on{background:#fff;color:var(--ink);font-weight:650;box-shadow:0 2px 8px rgba(73,104,139,.1)}.moods{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.moods button{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;border-radius:11px;font-size:11px;padding:8px 7px;color:var(--ink2)}.moods button .mood-icon{width:18px;height:18px;stroke-width:1.7;flex:0 0 auto}.moods button .color{width:6px;height:6px;border-radius:50%;margin-left:auto}.moods button.on{border-color:var(--accent);background:#eaf2fb;color:var(--ink);box-shadow:inset 0 0 0 1px var(--accent)}.sheet textarea,.sheet input,.sheet select{width:100%;box-sizing:border-box;margin-top:9px;border:1px solid var(--line);border-radius:11px;padding:10px;background:#fff;font:inherit;color:var(--ink)}.sheet textarea{min-height:110px;resize:vertical}.checks{display:flex;gap:15px;font-size:12px;color:var(--ink2);margin-top:10px}.save{width:100%;margin-top:12px;border:0;border-radius:12px;background:var(--accent);color:white;padding:11px;font-size:13px}
+.lock-trigger{width:100%;margin-top:9px;border:1px solid var(--line);border-radius:11px;padding:10px 12px;background:#fffdf5;color:var(--ink);font:inherit;display:flex;justify-content:space-between;align-items:center}.lock-trigger svg{width:16px}.lock-modal{display:none;position:fixed;inset:0;z-index:240;background:rgba(55,70,45,.34);align-items:center;justify-content:center;padding:18px}.lock-modal.show{display:flex}.lock-dialog{width:min(390px,100%);padding:18px;border-radius:22px;background:#eaf2dc;border:1px solid rgba(255,255,255,.9);box-shadow:0 18px 55px rgba(65,88,52,.22)}.lock-dialog h3{margin:0;font-size:17px}.lock-dialog p{font-size:10px;color:var(--ink2);margin:5px 0 12px}.lock-options{display:grid;gap:6px}.lock-option{width:100%;border:1px solid rgba(118,149,99,.2);background:rgba(255,253,241,.74);border-radius:12px;padding:9px 11px;color:var(--ink);font:inherit;display:flex;align-items:center}.lock-option::before{content:"";width:12px;height:12px;border:1.5px solid var(--ink3);border-radius:50%;margin-right:9px}.lock-option span{margin-left:auto;color:var(--ink3);font-size:9px}.lock-option.on{background:#d7e7c6;border-color:var(--accent)}.lock-option.on::before{border:4px solid var(--accent);background:white}.lock-actions{display:grid;grid-template-columns:1fr 1.5fr;gap:8px;margin-top:12px}.lock-actions button{border:0;border-radius:11px;padding:10px;font:inherit}.lock-cancel{background:rgba(255,253,241,.8);color:var(--ink2)}.lock-confirm{background:var(--accent);color:white}
 </style>
-<script src="/static/theme.js?v=32"></script>
 </head>
-<body>
-
-<div class="header">
-  <button class="back-btn" onclick="location.href='/'">
-    <i data-lucide="chevron-left"></i>
-  </button>
-  <h1>日历</h1>
-  <div class="days-together" id="daysTogether"></div>
-</div>
-
-<!-- Monthly Calendar -->
-<div class="glass">
-  <div class="section-label"><i data-lucide="calendar"></i> 月历</div>
-  <div class="month-nav">
-    <button onclick="changeMonth(-1)"><i data-lucide="chevron-left"></i></button>
-    <span class="month-label" id="monthLabel"></span>
-    <button onclick="changeMonth(1)"><i data-lucide="chevron-right"></i></button>
-  </div>
-  <div class="cal-weekdays">
-    <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
-  </div>
-  <div class="cal-grid" id="calGrid"></div>
-</div>
-
-<!-- Timeline -->
-<div class="glass">
-  <div class="section-label"><i data-lucide="git-branch"></i> 时间线</div>
-  <div class="timeline" id="timeline"></div>
-  <div class="tl-add-row">
-    <input type="date" id="tlDate">
-    <input type="time" id="tlTime" style="width:80px">
-    <select id="tlSide">
-      <option value="fox">🦊</option>
-      <option value="sheep">🐑</option>
-    </select>
-    <input type="text" id="tlText" placeholder="记录事件..."
-           onkeydown="if(event.key==='Enter')addTimeline()" style="flex:2">
-    <button onclick="addTimeline()">添加</button>
-  </div>
-</div>
-
-<!-- Wishes / Todos -->
-<div class="glass">
-  <div class="section-label"><i data-lucide="star"></i> 计划 · 待办 · 愿望</div>
-  <div id="wishList"></div>
-  <div class="wish-add-row">
-    <input type="text" id="wishText" placeholder="添加新的..."
-           onkeydown="if(event.key==='Enter')addWish()">
-    <select id="wishCat">
-      <option value="wish">愿望</option>
-      <option value="plan">计划</option>
-      <option value="todo">待办</option>
-    </select>
-    <button onclick="addWish()">添加</button>
-  </div>
-</div>
-
-<!-- Mood Picker Modal -->
-<div class="mood-picker" id="moodPicker" onclick="if(event.target===this)closeMoodPicker()">
-  <div class="mood-picker-inner">
-    <div class="title" id="moodPickerTitle"></div>
-    <div class="mood-options">
-      <span onclick="setMood('😊')">😊</span>
-      <span onclick="setMood('😍')">😍</span>
-      <span onclick="setMood('😴')">😴</span>
-      <span onclick="setMood('😢')">😢</span>
-      <span onclick="setMood('😤')">😤</span>
-      <span onclick="setMood('🥰')">🥰</span>
-      <span onclick="setMood('😂')">😂</span>
-      <span onclick="setMood('🤔')">🤔</span>
-      <span onclick="setMood('✨')">✨</span>
-      <span onclick="setMood('🎮')">🎮</span>
-    </div>
-    <button class="clear-btn" onclick="setMood('')">清除心情</button>
-  </div>
-</div>
-
+<body><main class="wrap">
+<header class="head"><h1 class="english-page-title">calendar</h1><small>mood · shared notes</small></header>
+<section class="cal glass">
+ <div class="month"><button onclick="moveMonth(-1)">‹</button><b id="monthLabel"></b><button onclick="moveMonth(1)">›</button></div>
+ <div class="week"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
+ <div class="days" id="days"></div>
+</section>
+</main>
+<div class="sheetbg" id="moodSheet" onclick="if(event.target===this)closeSheets()"><div class="sheet"><h3>这一天是什么心情？</h3><p class="mood-hint">小羊用圆点、福福用方点；每人最多选择三种</p><div class="author-tabs" id="moodAuthors"></div><div class="moods" id="moods"></div><button class="save" onclick="saveMoods()">保存心情</button></div></div>
+<div class="sheetbg" id="writeSheet" onclick="if(event.target===this)closeSheets()"><div class="sheet">
+ <h3>写下这一天</h3><div class="author-tabs" id="writeAuthors"></div><textarea id="diaryText" placeholder="今天发生了什么……"></textarea>
+ <p class="mood-hint" style="margin-top:10px">选择这篇日记的心情（最多三种）</p><div class="moods" id="writeMoods"></div>
+ <input id="diaryTags" placeholder="标签，用逗号分开">
+ <div class="checks"><label><input type="checkbox" id="coauthored" style="width:auto;margin:0"> 邀请福福一起写</label></div>
+ <input type="hidden" id="lockFor" value="0"><button class="lock-trigger" id="lockButton" type="button" onclick="openLockModal()"><span>不封存</span><i data-lucide="lock-keyhole"></i></button>
+ <button class="save" onclick="saveDiary()">保存这篇日记</button>
+</div></div>
+<div class="lock-modal" id="lockModal" onclick="if(event.target===this)closeLockModal()"><div class="lock-dialog"><h3>封存这一篇</h3><p>到时间之前，谁都不能打开，包括你自己。</p><div class="lock-options" id="lockOptions"></div><div class="lock-actions"><button class="lock-cancel" type="button" onclick="closeLockModal()">取消</button><button class="lock-confirm" type="button" onclick="confirmLock()">选定</button></div></div></div>
 <script>
-let currentYear, currentMonth;
-let moodsData = {};
-let specialData = {};
-let pickingDate = '';
-
-const LOVE_START = new Date('2026-04-10');
-
-function init() {
-  const now = new Date();
-  const offset = now.getTime() + 8 * 3600000;
-  const beijing = new Date(offset);
-  currentYear = beijing.getUTCFullYear();
-  currentMonth = beijing.getUTCMonth();
-
-  const days = Math.floor((now - LOVE_START) / 86400000);
-  document.getElementById('daysTogether').textContent = '在一起 ' + days + ' 天';
-
-  const tlDate = document.getElementById('tlDate');
-  tlDate.value = beijing.toISOString().slice(0, 10);
-
-  loadAll();
+const moodOptions=[
+ {key:'love',name:'心动',icon:'heart',color:'#e9859e'},{key:'happy',name:'开心',icon:'smile',color:'#efbd58'},
+ {key:'calm',name:'平静',icon:'waves',color:'#86ad83'},{key:'tired',name:'疲惫',icon:'moon',color:'#78a8d2'},
+ {key:'low',name:'低落',icon:'cloud-rain',color:'#8d82b8'},{key:'angry',name:'生气',icon:'frown',color:'#db6b63'},
+ {key:'thinking',name:'思考',icon:'brain',color:'#7893a7'},{key:'surprised',name:'惊喜',icon:'sparkles',color:'#e6a943'},
+ {key:'sad',name:'难过',icon:'cloud',color:'#71899d'},{key:'passionate',name:'热烈',icon:'flame',color:'#ed8651'},
+ {key:'healing',name:'治愈',icon:'sprout',color:'#70b697'},{key:'relaxed',name:'放松',icon:'gamepad-2',color:'#9b83c5'},
+ {key:'missing',name:'想你',icon:'message-circle-heart',color:'#d9899f'},{key:'bored',name:'无聊',icon:'circle-ellipsis',color:'#9aa49b'},
+ {key:'lucky',name:'幸运',icon:'clover',color:'#79ad72'},{key:'fulfilled',name:'充实',icon:'list-checks',color:'#6f9e87'},
+ {key:'irritable',name:'烦躁',icon:'zap',color:'#df8a58'},{key:'heartache',name:'心疼',icon:'heart-handshake',color:'#c97b88'},
+ {key:'free',name:'自由',icon:'bird',color:'#72a9b7'},{key:'expecting',name:'期待',icon:'telescope',color:'#7f91bd'},
+ {key:'sweet',name:'甜蜜',icon:'candy',color:'#d990aa'},{key:'craving',name:'嘴馋',icon:'utensils',color:'#c89762'},
+ {key:'aggrieved',name:'委屈',icon:'cloud-rain',color:'#8c91b1'},{key:'embarrassed',name:'尴尬',icon:'meh',color:'#b28d79'}
+];
+const moodMap=Object.fromEntries(moodOptions.map(x=>[x.key,x]));
+const legacyMoodKeys={'🥰':'love','😊':'happy','😌':'calm','😪':'tired','😔':'low','😤':'angry','🤔':'thinking','✨':'surprised','🌧️':'sad','🔥':'passionate','🌱':'healing','🎮':'relaxed'};
+const normalizeMoods=value=>(Array.isArray(value)?value:(value?[value]:[])).map(x=>legacyMoodKeys[x]||x).filter(x=>moodMap[x]).slice(0,3);
+const normalizeDayMoods=value=>value&&typeof value==='object'&&!Array.isArray(value)?{sheep:normalizeMoods(value.sheep),fufu:normalizeMoods(value.fufu)}:{sheep:normalizeMoods(value),fufu:[]};
+const copyDayMoods=value=>{const moods=normalizeDayMoods(value);return{sheep:[...moods.sheep],fufu:[...moods.fufu]}};
+let view=new Date(), selected='', moodData={}, diaryPosts=[],draftMoodByAuthor={sheep:[],fufu:[]},activeAuthor='sheep';
+const localKey=d=>{const x=new Date(d.getTime()-d.getTimezoneOffset()*60000);return x.toISOString().slice(0,10)};
+const esc=HomeCommon.escapeHtml;
+const lockChoices=[['0','不封存'],['3600','1 小时'],['21600','6 小时'],['86400','一天'],['604800','一周'],['2592000','一个月'],['15552000','半年']];let pendingLock='0';
+function openLockModal(){pendingLock=lockFor.value;renderLockOptions();lockModal.classList.add('show')}
+function closeLockModal(){lockModal.classList.remove('show')}
+function renderLockOptions(){lockOptions.innerHTML=lockChoices.map(([value,label])=>`<button type="button" class="lock-option${pendingLock===value?' on':''}" onclick="pendingLock='${value}';renderLockOptions()">${label}<span>${value==='0'?'现在可见':'到期打开'}</span></button>`).join('')}
+function confirmLock(){lockFor.value=pendingLock;lockButton.querySelector('span').textContent=lockChoices.find(x=>x[0]===pendingLock)?.[1]||'不封存';closeLockModal()}
+function monthKey(){return `${view.getFullYear()}-${String(view.getMonth()+1).padStart(2,'0')}`}
+async function load(){
+ render();
+ const [moodsResult,diaryResult]=await Promise.allSettled([
+  fetch('/api/calendar/moods?month='+monthKey()).then(r=>{if(!r.ok)throw new Error('moods');return r.json()}),
+  fetch('/api/diary').then(r=>{if(!r.ok)throw new Error('diary');return r.json()})
+ ]);
+ if(moodsResult.status==='fulfilled')moodData=moodsResult.value||{};
+ if(diaryResult.status==='fulfilled')diaryPosts=diaryResult.value.posts||[];
+ render();
 }
-
-async function loadAll() {
-  await Promise.all([loadCalendar(), loadTimeline(), loadWishes()]);
-  lucide.createIcons();
+function render(){
+ monthLabel.textContent=`${view.getFullYear()}年 ${view.getMonth()+1}月`;
+ if(!selected)selected=localKey(new Date());
+ const y=view.getFullYear(),m=view.getMonth(),first=new Date(y,m,1),start=new Date(y,m,1-first.getDay());
+ const diaryDates=new Set(diaryPosts.map(p=>p.entry_date||localKey(new Date(p.created_at*1000))));diaryDates.add('2026-07-29');
+ let html='';
+ for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);const k=localKey(d),other=d.getMonth()!==m;
+  const dayMoods=normalizeDayMoods(moodData[k]||(k==='2026-07-29'?{sheep:['happy','healing'],fufu:[]}:null)),sheepDots=dayMoods.sheep.map(key=>`<i class="mood-dot" style="background:${moodMap[key]?.color||'#91a3b4'}"></i>`).join('');
+  html+=`<div class="day${other?' other':''}${k===localKey(new Date())?' today':''}${k===selected?' selected':''}" onclick="selectDate('${k}')">${d.getDate()}${sheepDots?`<span class="mood-dots sheep">${sheepDots}</span>`:''}${diaryDates.has(k)?'<i class="diary-mark"></i>':''}</div>`;
+ }
+ days.innerHTML=html;
 }
-
-async function loadCalendar() {
-  const monthStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
-  document.getElementById('monthLabel').textContent = `${currentYear}年${currentMonth + 1}月`;
-
-  const [moodsRes, specialRes] = await Promise.all([
-    fetch('/api/calendar/moods?month=' + monthStr),
-    fetch('/api/calendar/special')
-  ]);
-  moodsData = await moodsRes.json();
-  specialData = await specialRes.json();
-  renderCalendar();
+function selectDate(k){location.href='/diary-day.html?date='+encodeURIComponent(k)} function moveMonth(n){view=new Date(view.getFullYear(),view.getMonth()+n,1);selected=monthKey()+'-01';load()}
+function renderAuthorTabs(id,choiceId){document.getElementById(id).innerHTML=`<button class="${activeAuthor==='sheep'?'on':''}" onclick="setMoodAuthor('sheep','${id}','${choiceId}')">小羊</button><button class="${activeAuthor==='fufu'?'on':''}" onclick="setMoodAuthor('fufu','${id}','${choiceId}')">福福 AI</button>`}
+function setMoodAuthor(author,tabsId,choiceId){activeAuthor=author;renderAuthorTabs(tabsId,choiceId);renderMoodChoices(choiceId)}
+function renderMoodChoices(id){const chosen=draftMoodByAuthor[activeAuthor];document.getElementById(id).innerHTML=moodOptions.map(x=>`<button class="${chosen.includes(x.key)?'on':''}" onclick="toggleMood('${x.key}','${id}')"><i class="mood-icon" data-lucide="${x.icon}" style="color:${x.color}"></i><span>${x.name}</span><i class="color" style="background:${x.color}"></i></button>`).join('');if(window.lucide)lucide.createIcons()}
+function toggleMood(key,id){const chosen=draftMoodByAuthor[activeAuthor],at=chosen.indexOf(key);if(at>=0)chosen.splice(at,1);else if(chosen.length<3)chosen.push(key);renderMoodChoices(id)}
+function openMood(){activeAuthor='sheep';draftMoodByAuthor=copyDayMoods(moodData[selected]);renderAuthorTabs('moodAuthors','moods');renderMoodChoices('moods');moodSheet.classList.add('show')}
+async function saveMoods(close=true){const saved=copyDayMoods(draftMoodByAuthor);await fetch('/api/calendar/mood',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:selected,mood:saved})});moodData[selected]=saved;if(close)closeSheets();render()}
+function openWrite(){activeAuthor='sheep';draftMoodByAuthor=copyDayMoods(moodData[selected]);renderAuthorTabs('writeAuthors','writeMoods');renderMoodChoices('writeMoods');writeSheet.classList.add('show')} function closeSheets(){document.querySelectorAll('.sheetbg').forEach(x=>x.classList.remove('show'))}
+async function saveDiary(){const text=diaryText.value.trim();if(!text)return;const seconds=Number(lockFor.value)||0;await saveMoods(false);const mood=[...draftMoodByAuthor[activeAuthor]];
+ await fetch('/api/diary/write',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:text,mood,entry_date:selected,author:activeAuthor,coauthored:coauthored.checked,tags:diaryTags.value.split(/[,，]/).map(x=>x.trim()).filter(Boolean),unlock_at:seconds?Date.now()/1000+seconds:0})});
+ diaryText.value='';diaryTags.value='';coauthored.checked=false;closeSheets();await load();
 }
-
-function renderCalendar() {
-  const grid = document.getElementById('calGrid');
-  const firstDay = new Date(currentYear, currentMonth, 1);
-  const startDow = firstDay.getDay();
-  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-
-  const now = new Date();
-  const offset = now.getTime() + 8 * 3600000;
-  const beijing = new Date(offset);
-  const todayStr = beijing.toISOString().slice(0, 10);
-
-  let html = '';
-
-  for (let i = 0; i < startDow; i++) {
-    const prevDate = new Date(currentYear, currentMonth, -startDow + i + 1);
-    html += `<div class="cal-day other-month">${prevDate.getDate()}</div>`;
-  }
-
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const isToday = dateStr === todayStr;
-    const mood = moodsData[dateStr] || '';
-    const special = specialData[dateStr];
-
-    html += `<div class="cal-day${isToday ? ' today' : ''}" onclick="openMoodPicker('${dateStr}')">
-      ${d}
-      ${mood ? `<span class="mood">${mood}</span>` : ''}
-      ${special ? `<span class="special-dot"></span>` : ''}
-    </div>`;
-  }
-
-  const totalCells = startDow + daysInMonth;
-  const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
-  for (let i = 1; i <= remaining; i++) {
-    html += `<div class="cal-day other-month">${i}</div>`;
-  }
-
-  grid.innerHTML = html;
-}
-
-function changeMonth(delta) {
-  currentMonth += delta;
-  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
-  loadCalendar();
-}
-
-function openMoodPicker(dateStr) {
-  pickingDate = dateStr;
-  const parts = dateStr.split('-');
-  document.getElementById('moodPickerTitle').textContent = `${parseInt(parts[1])}月${parseInt(parts[2])}日的心情`;
-  document.getElementById('moodPicker').classList.add('show');
-}
-
-function closeMoodPicker() {
-  document.getElementById('moodPicker').classList.remove('show');
-}
-
-async function setMood(mood) {
-  closeMoodPicker();
-  await fetch('/api/calendar/mood', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ date: pickingDate, mood })
-  });
-  if (mood) moodsData[pickingDate] = mood;
-  else delete moodsData[pickingDate];
-  renderCalendar();
-}
-
-async function loadTimeline() {
-  const monthStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
-  const res = await fetch('/api/calendar/timeline?month=' + monthStr);
-  const data = await res.json();
-  const el = document.getElementById('timeline');
-
-  if (data.length === 0) {
-    el.innerHTML = '<div class="empty-hint">这个月还没有记录</div>';
-    return;
-  }
-
-  el.innerHTML = data.map(e => `
-    <div class="tl-item ${e.side}">
-      <div class="tl-content">
-        <div class="tl-side-label">${e.side === 'fox' ? '🦊 福福' : '🐑 小羊'}${e.time ? ' · ' + e.time : ''}</div>
-        ${escHtml(e.text)}
-        <div class="tl-meta">${e.date}</div>
-      </div>
-      <div class="tl-dot"></div>
-    </div>
-  `).join('');
-}
-
-async function addTimeline() {
-  const date = document.getElementById('tlDate').value;
-  const timeVal = document.getElementById('tlTime').value;
-  const text = document.getElementById('tlText').value.trim();
-  const side = document.getElementById('tlSide').value;
-  if (!text) return;
-
-  document.getElementById('tlText').value = '';
-  await fetch('/api/calendar/timeline/add', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ date, time: timeVal, text, side })
-  });
-  loadTimeline();
-}
-
-async function loadWishes() {
-  const res = await fetch('/api/calendar/wishes');
-  const data = await res.json();
-  const el = document.getElementById('wishList');
-
-  if (data.length === 0) {
-    el.innerHTML = '<div class="empty-hint">还没有愿望和计划</div>';
-    return;
-  }
-
-  el.innerHTML = data.map(w => `
-    <div class="wish-item">
-      <div class="wish-check ${w.done ? 'done' : ''}" onclick="toggleWish(${w.id})"></div>
-      <div class="wish-text ${w.done ? 'done' : ''}">${escHtml(w.text)}</div>
-      <span class="wish-tag ${w.category}">${({wish:'愿望',plan:'计划',todo:'待办'})[w.category]||w.category}</span>
-      <button class="wish-del" onclick="deleteWish(${w.id})">×</button>
-    </div>
-  `).join('');
-}
-
-async function addWish() {
-  const text = document.getElementById('wishText').value.trim();
-  const category = document.getElementById('wishCat').value;
-  if (!text) return;
-
-  document.getElementById('wishText').value = '';
-  await fetch('/api/calendar/wishes/add', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, category })
-  });
-  loadWishes();
-}
-
-async function toggleWish(id) {
-  await fetch('/api/calendar/wishes/toggle', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id })
-  });
-  loadWishes();
-}
-
-async function deleteWish(id) {
-  if (!confirm('删除？')) return;
-  await fetch('/api/calendar/wishes/delete', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id })
-  });
-  loadWishes();
-}
-
-function escHtml(s) {
-  const d = document.createElement('div');
-  d.textContent = s || '';
-  return d.innerHTML;
-}
-
-init();
-</script>
-</body>
-</html>
+window.addEventListener('DOMContentLoaded',()=>{selected=localKey(new Date());renderCoreNav('calendar');load();});
+</script></body></html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="icon" type="image/png" href="/static/favicon-32.png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<title>读书笔记本</title>
+<link rel="stylesheet" href="/static/common.css?v=20">
+<script src="/static/common.js?v=2"></script>
+<style>
+  @font-face{font-family:'Yozai';src:url('/static/yozai.woff2') format('woff2');font-display:swap}
+  :root{
+    --bg:#edf3fa;--card:#fff;--card2:#f4f8fd;--ink:#1c3350;--ink2:#4c6a8c;
+    --ink3:#8aa3bd;--accent:#2f7dc4;--soft:#d9e9f8;--line:#dbe6f2;
+  }
+  body{background:var(--bg);color:var(--ink);font-family:'Yozai',-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;
+    min-height:100vh;padding:0 14px 70px}
+  .wrap{max-width:820px;margin:0 auto}
+  header{position:sticky;top:0;z-index:20;margin:0 -14px;padding:calc(10px + env(safe-area-inset-top)) 14px 12px;
+    display:flex;align-items:center;gap:10px;background:color-mix(in srgb,var(--bg) 78%,transparent);
+    backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.7)}
+  .back,.read-link{border:1px solid var(--line);background:rgba(255,255,255,.7);color:var(--ink2);
+    text-decoration:none;border-radius:12px;min-height:40px;padding:0 13px;display:grid;place-items:center}
+  .head-text{flex:1;min-width:0}.head-text h1{font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .head-text p{font-size:11px;color:var(--ink3);margin-top:2px}
+  .hero{margin:18px 0 12px;padding:20px;border:1px solid rgba(255,255,255,.78);border-radius:24px;
+    background:rgba(255,255,255,.64);box-shadow:0 16px 44px rgba(43,67,103,.1);backdrop-filter:blur(16px)}
+  .hero .eyebrow{font-size:11px;color:var(--accent);letter-spacing:2px;margin-bottom:6px}
+  .hero h2{font-size:24px;line-height:1.4}.hero p{font-size:12px;color:var(--ink2);margin-top:8px;line-height:1.8}
+  .stats{display:flex;gap:8px;margin-top:14px}.stat{background:var(--card2);border:1px solid var(--line);
+    border-radius:12px;padding:9px 12px;font-size:12px;color:var(--ink2)}.stat b{font-size:17px;color:var(--ink);margin-right:4px}
+  .actions{display:flex;gap:8px;margin:12px 0 20px}.actions button{border:none;background:var(--accent);color:#fff;
+    border-radius:12px;padding:10px 15px;cursor:pointer;font-family:inherit}.actions button.secondary{background:var(--card);color:var(--ink2);border:1px solid var(--line)}
+  .section{margin:0 0 14px;border:1px solid rgba(255,255,255,.8);border-radius:20px;background:rgba(255,255,255,.72);
+    box-shadow:0 8px 26px rgba(43,67,103,.07);overflow:hidden}
+  .section-head{padding:15px 16px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line)}
+  .section-head .text{flex:1}.section-head h3{font-size:16px}.section-head small{color:var(--ink3);font-size:10px}
+  .copy{border:1px solid var(--line);background:var(--card2);color:var(--ink2);border-radius:10px;padding:7px 10px;cursor:pointer;font-family:inherit}
+  .group{padding:14px 16px 4px}.group-title{font-size:11px;color:var(--accent);letter-spacing:1.5px;margin-bottom:8px}
+  .item{position:relative;margin-bottom:10px;padding:12px 42px 12px 13px;border-radius:13px;background:var(--card2);
+    border:1px solid var(--line);font-size:13px;line-height:1.8;white-space:pre-wrap;word-break:break-word}
+  .item.question{border-left:3px solid #72a6d8}.item.highlight{border-left:3px solid #e0b86a}
+  .item .note{margin-top:7px;padding-top:7px;border-top:1px dashed var(--line);color:var(--ink2);font-size:12px}
+  .item .unit{font-size:10px;color:var(--ink3);margin-bottom:4px}.item .mini-copy{position:absolute;right:8px;top:8px;
+    width:28px;height:28px;border:0;background:rgba(255,255,255,.8);border-radius:8px;cursor:pointer;color:var(--ink3)}
+  .empty{padding:54px 20px;text-align:center;color:var(--ink3);line-height:2;background:rgba(255,255,255,.55);
+    border:1.5px dashed var(--line);border-radius:20px}
+  .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translate(-50%,20px);
+    opacity:0;pointer-events:none;background:var(--ink);color:#fff;border-radius:99px;padding:9px 16px;font-size:12px;
+    transition:.2s;z-index:50}.toast.show{opacity:1;transform:translate(-50%,0)}
+  @media(max-width:520px){.read-link{font-size:12px}.hero h2{font-size:21px}.stats{flex-wrap:wrap}.section-head{align-items:flex-start}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="back" href="/shelf.html" aria-label="返回书柜">‹</a>
+    <div class="head-text"><h1 id="head-title">读书笔记本</h1><p id="head-sub">正在整理划线和提问…</p></div>
+    <a class="read-link" id="read-link" href="/shelf.html">回到书里</a>
+  </header>
+  <section class="hero">
+    <div class="eyebrow">MY READING NOTEBOOK</div>
+    <h2 id="book-title">正在翻开笔记本…</h2>
+    <p id="book-hint">这里会自动收集这本书里的划线、批注和提问。</p>
+    <div class="stats">
+      <div class="stat"><b id="highlight-count">0</b>条划线</div>
+      <div class="stat"><b id="question-count">0</b>个提问</div>
+      <div class="stat"><b id="section-count">0</b><span id="section-unit">章</span></div>
+    </div>
+  </section>
+  <div class="actions">
+    <button id="copy-all">复制整本笔记</button>
+    <button class="secondary" onclick="location.reload()">重新整理</button>
+  </div>
+  <main id="notes"><div class="empty">正在整理笔记…</div></main>
+</div>
+<div class="toast" id="toast">已复制</div>
+<script src="/static/theme.js?v=40"></script>
+<script>
+const $=id=>document.getElementById(id);
+const q=new URLSearchParams(location.search);
+const bookId=q.get('id')||'';
+const kind='deep';
+let notebook=null;
+const esc=HomeCommon.escapeHtml;
+const unitName=u=>!u?'':u==='00-导读.md'?'导读':u==='raw.md'?'原文':u.replace(/\.md$/,'');
+
+function itemText(item,type){
+  let text=type==='highlight'?`> ${item.text}`:`问题：${item.text}`;
+  if(item.note)text+=`\n\n批注：${item.note}`;
+  return text;
+}
+function sectionText(section){
+  const lines=[`## ${section.title}`];
+  if(section.highlights.length){
+    lines.push('', '### 划线与批注');
+    section.highlights.forEach(x=>lines.push('',itemText(x,'highlight')));
+  }
+  if(section.questions.length){
+    lines.push('', '### 我的提问');
+    section.questions.forEach(x=>lines.push('',itemText(x,'question')));
+  }
+  return lines.join('\n');
+}
+function notebookText(){
+  return [`# ${notebook.book.title} · 读书笔记`,'',...notebook.sections.map(sectionText)].join('\n');
+}
+async function copyText(text){
+  try{
+    await navigator.clipboard.writeText(text);
+  }catch(e){
+    const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';
+    document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();
+  }
+  $('toast').classList.add('show');clearTimeout(copyText.timer);
+  copyText.timer=setTimeout(()=>$('toast').classList.remove('show'),1400);
+}
+function renderItem(item,type){
+  const unit=item.unit?`<div class="unit">${esc(unitName(item.unit))}</div>`:'';
+  const note=item.note?`<div class="note">批注：${esc(item.note)}</div>`:'';
+  return `<div class="item ${type}">${unit}${esc(item.text)}${note}
+    <button class="mini-copy" data-copy="${esc(itemText(item,type))}" aria-label="复制这一条">⧉</button></div>`;
+}
+function render(){
+  const b=notebook.book,c=notebook.counts;
+  document.title=b.title+' · 读书笔记本';
+  $('head-title').textContent=b.title;
+  $('head-sub').textContent='深读笔记 · 按章节整理';
+  $('book-title').textContent=b.title;
+  $('book-hint').textContent='划线、批注和在原文旁提出的问题，已经按章节放回这里。';
+  $('highlight-count').textContent=c.highlights;
+  $('question-count').textContent=c.questions;
+  $('section-count').textContent=notebook.sections.length;
+  $('section-unit').textContent='章';
+  $('read-link').href='/read-deep.html?book='+encodeURIComponent(bookId);
+  if(!notebook.sections.length){
+    $('notes').innerHTML='<div class="empty">这本笔记本还是空的<br>去书里划一段、写个批注，或者问福福一个问题吧。</div>';
+    $('copy-all').disabled=true;
+    return;
+  }
+  $('notes').innerHTML=notebook.sections.map((s,i)=>`<section class="section">
+    <div class="section-head"><div class="text"><h3>${esc(s.title)}</h3>
+      <small>${s.highlights.length} 条划线 · ${s.questions.length} 个提问</small></div>
+      <button class="copy section-copy" data-section="${i}">复制本章</button></div>
+    ${s.highlights.length?`<div class="group"><div class="group-title">划线与批注</div>${s.highlights.map(x=>renderItem(x,'highlight')).join('')}</div>`:''}
+    ${s.questions.length?`<div class="group"><div class="group-title">我的提问</div>${s.questions.map(x=>renderItem(x,'question')).join('')}</div>`:''}
+  </section>`).join('');
+  document.querySelectorAll('.section-copy').forEach(btn=>btn.onclick=()=>copyText(sectionText(notebook.sections[+btn.dataset.section])));
+  document.querySelectorAll('.mini-copy').forEach(btn=>btn.onclick=()=>copyText(btn.dataset.copy));
+}
+async function load(){
+  if(!bookId){$('notes').innerHTML='<div class="empty">没有找到这本书。</div>';return;}
+  try{
+    const res=await fetch(`/api/read/notebook?kind=${kind}&id=${encodeURIComponent(bookId)}`,{cache:'no-store'});
+    if(!res.ok)throw new Error();
+    notebook=await res.json();render();
+  }catch(e){
+    $('notes').innerHTML='<div class="empty">笔记本暂时取不到<br>确认阅读接口已经更新后再试一次。</div>';
+  }
+}
+$('copy-all').onclick=()=>{if(notebook)copyText(notebookText());};
+load();
+</script>
+</body>
+</html>

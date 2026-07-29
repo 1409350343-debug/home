@@ -20,10 +20,16 @@ import uuid
 import shutil
 import glob
 import argparse
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
-PROJECT_DIR = Path.home() / ".claude" / "projects" / "-var-www-home-api"
+import handoff
+
+PROJECT_DIR = Path(os.environ.get(
+    "HOME_CLAUDE_PROJECT_DIR",
+    str(Path.home() / ".claude" / "projects" / "-var-www-home-api"),
+)).expanduser()
 ARCHIVE_DIR = PROJECT_DIR / "archived_sessions"
 LAST_GOOD_FILE = PROJECT_DIR / "last_good_session.json"
 
@@ -46,12 +52,27 @@ def read_jsonl(path):
 
 
 def write_jsonl(path, events):
-    with open(path, "w") as f:
-        for event in events:
-            f.write(json.dumps(event, ensure_ascii=False) + "\n")
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix=".session-", suffix=".jsonl", dir=str(path.parent))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            for event in events:
+                f.write(json.dumps(event, ensure_ascii=False) + "\n")
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
 
 
 def find_active_session():
+    state = handoff.load_state()
+    if state.get("status") in handoff.PENDING_STATES and state.get("old_path"):
+        old_path = state["old_path"]
+        if os.path.exists(old_path):
+            return old_path
     jsonl_files = glob.glob(str(PROJECT_DIR / "*.jsonl"))
     if not jsonl_files:
         return None
@@ -80,7 +101,7 @@ def filter_keepable(events):
 def find_clean_boundary(keepable, retain_tokens):
     """Find where to cut: keep the last N tokens worth of events."""
     total = 0
-    cut_index = len(keepable)
+    cut_index = 0
     for i in range(len(keepable) - 1, -1, -1):
         total += estimate_event_tokens(keepable[i])
         if total > retain_tokens:
@@ -135,6 +156,11 @@ def ensure_tool_primer(retained, all_keepable, min_rounds=1):
 
 def rewrite_session_chain(events, new_session_id):
     """Rewrite session IDs and parent chain for new session."""
+    uuid_map = {
+        e["uuid"]: str(uuid.uuid4())
+        for e in events
+        if e.get("uuid")
+    }
     rewritten = []
     for e in events:
         e2 = dict(e)
@@ -143,10 +169,9 @@ def rewrite_session_chain(events, new_session_id):
         if "session_id" in e2:
             e2["session_id"] = new_session_id
         if "parentUuid" in e2:
-            e2["parentUuid"] = None
+            e2["parentUuid"] = uuid_map.get(e2.get("parentUuid"))
         if "uuid" in e2:
-            e2["uuid"] = str(uuid.uuid4())
-        # Rewrite tool_use/tool_result IDs to stay consistent
+            e2["uuid"] = uuid_map[e2["uuid"]]
         rewritten.append(e2)
     return fix_tool_ids(rewritten)
 
@@ -258,6 +283,10 @@ def archive_old(path):
 
 
 def do_swap(args):
+    if handoff.pending():
+        state = handoff.load_state()
+        print(f"Handoff already pending: {state.get('status')}")
+        return False
     active_path = find_active_session()
     if not active_path:
         print("No active session found.")
@@ -291,15 +320,31 @@ def do_swap(args):
     print(f"  New transcript: {len(final)} events")
     print(f"  Token estimate: ~{sum(estimate_event_tokens(e) for e in final):,}")
 
-    mark_last_good(old_sid, active_path)
-    archive_old(active_path)
+    handoff.prepare(
+        reason="context_limit",
+        old_session_id=old_sid,
+        new_session_id=new_sid,
+        old_path=active_path,
+        new_path=new_path,
+        events=retained,
+        retain_tokens=args.retain_tokens,
+    )
+    handoff.mark_transcript_ready(new_path)
+    handoff.mark_starting()
 
     print(f"\n  Resume command:")
     print(f"  claude --resume {new_sid}")
+    print(f"  After recovery:")
+    print(f"  python3 {Path(__file__).with_name('handoff.py')} ready --session-id {new_sid}")
+    print("  Old session is kept until the ready signal.")
     return True
 
 
 def do_forge(args):
+    if handoff.pending():
+        state = handoff.load_state()
+        print(f"Handoff already pending: {state.get('status')}")
+        return False
     active_path = find_active_session()
     if not active_path:
         print("No active session found.")
@@ -335,11 +380,24 @@ def do_forge(args):
     print(f"  New session: {new_sid}")
     print(f"  Forged transcript: {len(final)} events")
 
-    mark_last_good(old_sid, active_path)
-    archive_old(active_path)
+    handoff.prepare(
+        reason="route_drift" if drift else "forge",
+        old_session_id=old_sid,
+        new_session_id=new_sid,
+        target_model=args.target_model,
+        old_path=active_path,
+        new_path=new_path,
+        events=retained,
+        retain_tokens=args.retain_tokens,
+    )
+    handoff.mark_transcript_ready(new_path)
+    handoff.mark_starting()
 
     print(f"\n  Resume command:")
     print(f"  claude --resume {new_sid}")
+    print(f"  After recovery:")
+    print(f"  python3 {Path(__file__).with_name('handoff.py')} ready --session-id {new_sid}")
+    print("  Old session is kept until the ready signal.")
     return True
 
 
@@ -426,6 +484,10 @@ def get_real_token_count(events):
 
 def do_auto_check(args):
     """Check if context is getting fat, write alert file if swap needed."""
+    if handoff.pending():
+        state = handoff.load_state()
+        print(f"HANDOFF_PENDING:{state.get('status')}")
+        return
     active_path = find_active_session()
     if not active_path:
         print("NO_SESSION")
@@ -481,6 +543,11 @@ def do_watch(args):
     check_count = 0
     while True:
         check_count += 1
+        if handoff.pending():
+            state = handoff.load_state()
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] handoff {state.get('status')} — waiting for ready", flush=True)
+            time.sleep(interval)
+            continue
         active_path = find_active_session()
         if not active_path:
             time.sleep(interval)
@@ -501,13 +568,11 @@ def do_watch(args):
                 retain_tokens = DEFAULT_RETAIN_TOKENS
                 target_model = args.target_model
             do_forge(ForgeArgs())
-            break
         elif ratio >= args.threshold:
             print(f"[{ts}] #{check_count} {ratio:.0%} full → auto-swap")
             class SwapArgs:
                 retain_tokens = DEFAULT_RETAIN_TOKENS
             do_swap(SwapArgs())
-            break
         else:
             print(f"[{ts}] #{check_count} OK {ratio:.0%} ({est_tokens:,} tokens)", flush=True)
 

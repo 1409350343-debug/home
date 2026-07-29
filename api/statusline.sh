@@ -3,6 +3,10 @@
 INPUT=$(cat)
 RATE_FILE="/tmp/claude-rate-limits.json"
 
+# CC 活跃时顺手刷新共享时间快照；失败不影响状态栏与聊天。
+/usr/bin/python3 /var/www/home/api/time_sense.py --no-weather-refresh \
+  >/dev/null 2>&1 || true
+
 RATE_LIMITS=$(echo "$INPUT" | python3 -c "
 import sys, json
 try:
@@ -25,7 +29,7 @@ fi
 
 # Dump current session model + pinned model for the home "我现在是" card
 echo "$INPUT" | python3 -c "
-import sys, json, os, time, tempfile
+import sys, json, os, time, tempfile, subprocess
 try:
     data = json.load(sys.stdin)
     m = data.get('model', {}) or {}
@@ -45,6 +49,13 @@ try:
         json.dump(out, f, ensure_ascii=False)
     os.chmod(tmp, 0o644)
     os.replace(tmp, '/var/www/home/data/model_state.json')
+    if m.get('id'):
+        subprocess.run(
+            ['/usr/bin/python3', '/var/www/home/api/handoff.py',
+             'auto-ready-model', '--model', m.get('id')],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            timeout=3, check=False,
+        )
 except Exception:
     pass
 " 2>/dev/null

@@ -9,10 +9,18 @@ import zipfile
 import xml.etree.ElementTree as ET
 import urllib.request
 import threading
+import tempfile
+import uuid
 from html.parser import HTMLParser
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, urlencode
 from io import BytesIO
+from contextlib import contextmanager
+
+try:
+    import fcntl
+except ImportError:  # Windows fallback; production is Linux.
+    fcntl = None
 
 TG_CHAT_ID = '8519905209'
 
@@ -44,12 +52,24 @@ def tg_notify(text):
             print(f'[tg_notify] error: {e}', file=sys.stderr, flush=True)
     threading.Thread(target=_send, daemon=True).start()
 
-DATA_DIR = '/var/www/home/data/reading'
+DATA_DIR = os.environ.get('HOME_READING_DATA_DIR', '/var/www/home/data/reading')
 BOOKS_DIR = os.path.join(DATA_DIR, 'books')
 META_DIR = os.path.join(DATA_DIR, 'meta')
 SHELF_FILE = os.path.join(DATA_DIR, 'shelf.json')
 CHAT_FILE = os.path.join(DATA_DIR, 'chat.json')
+CHAT_ARCHIVE_FILE = os.path.join(DATA_DIR, 'chat-archive.jsonl')
+CHAT_LOCK_FILE = os.path.join(DATA_DIR, '.chat.lock')
+CHAT_HEARTBEAT_FILE = os.path.join(DATA_DIR, 'cc_monitor_heartbeat.json')
+TIME_STATE_FILE = os.environ.get(
+    'HOME_TIME_STATE',
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'time_state.json'),
+)
+VAULT_DIR = os.environ.get('HOME_VAULT_DIR', '/var/www/home/vault')
+VAULT_MANIFEST_FILE = os.path.join(VAULT_DIR, 'manifest.json')
 CHARS_PER_PAGE = 800
+CHAT_KEEP = 500
+CHAT_TEXT_LIMIT = 10000
+CHAT_IMAGE_LIMIT = 8 * 1024 * 1024
 
 os.makedirs(BOOKS_DIR, exist_ok=True)
 os.makedirs(META_DIR, exist_ok=True)
@@ -125,15 +145,152 @@ def parse_epub(raw_bytes):
     return title, '\n\n'.join(texts)
 
 
+_chat_thread_lock = threading.RLock()
+
+
+@contextmanager
+def chat_lock():
+    """Coordinate API writers while remaining compatible with file-watching Monitor."""
+    with _chat_thread_lock:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        with open(CHAT_LOCK_FILE, 'a+') as lock_file:
+            if fcntl:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                if fcntl:
+                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+
 def load_chat():
-    if os.path.exists(CHAT_FILE):
+    if not os.path.exists(CHAT_FILE):
+        return []
+    try:
         with open(CHAT_FILE, encoding='utf-8') as f:
-            return json.load(f)
-    return []
+            data = json.load(f)
+        return data if isinstance(data, list) else []
+    except (OSError, json.JSONDecodeError):
+        # Atomic API writes prevent new corruption. A Monitor may still be midway
+        # through a legacy in-place write, so readers fail soft and retry later.
+        return []
+
+
+def _atomic_json_write(path, data, mode=0o600):
+    directory = os.path.dirname(path)
+    os.makedirs(directory, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(prefix='.chat-', suffix='.tmp', dir=directory)
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.chmod(tmp_path, mode)
+        os.replace(tmp_path, path)
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
 
 def save_chat(msgs):
-    with open(CHAT_FILE, 'w', encoding='utf-8') as f:
-        json.dump(msgs, f, ensure_ascii=False, indent=2)
+    _atomic_json_write(CHAT_FILE, msgs)
+
+
+def append_chat(msg):
+    """Append without changing chat.json, the existing CC/TG bridge contract."""
+    with chat_lock():
+        msgs = load_chat()
+        client_id = msg.get('client_id')
+        if client_id:
+            existing = next((m for m in msgs if m.get('client_id') == client_id), None)
+            if existing:
+                return existing
+        msgs.append(msg)
+        if len(msgs) > CHAT_KEEP:
+            archived, msgs = msgs[:-CHAT_KEEP], msgs[-CHAT_KEEP:]
+            with open(CHAT_ARCHIVE_FILE, 'a', encoding='utf-8') as archive:
+                for old in archived:
+                    archive.write(json.dumps(old, ensure_ascii=False) + '\n')
+        save_chat(msgs)
+    return msg
+
+
+def temporal_context():
+    """Return the current shared context without making chat depend on it."""
+    try:
+        with open(TIME_STATE_FILE, encoding='utf-8') as f:
+            state = json.load(f)
+        return {
+            'summary': state.get('ai_context', ''),
+            'status': state.get('status', ''),
+            'location': state.get('location', ''),
+            'updated_at': state.get('updated_at', 0),
+        }
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def new_message(sender, text, page=-1, book_id='home', img=None, client_id=None):
+    now = time.time()
+    msg = {
+        'id': f'{int(now * 1000)}-{uuid.uuid4().hex[:8]}',
+        'sender': sender,
+        'text': text,
+        'page': page,
+        'book_id': book_id,
+        'ts': now,
+    }
+    if img:
+        msg['img'] = img
+    if client_id:
+        msg['client_id'] = str(client_id)[:100]
+    if sender == '小羊':
+        msg['delivery'] = 'queued'
+        msg['route'] = 'cc-tg'
+        context = temporal_context()
+        if context:
+            # Extra field only: old CC/TG Monitor remains fully compatible.
+            msg['temporal_context'] = context
+    return msg
+
+
+def image_extension(raw):
+    if raw.startswith(b'\xff\xd8\xff'):
+        return '.jpg'
+    if raw.startswith(b'\x89PNG\r\n\x1a\n'):
+        return '.png'
+    if raw.startswith((b'GIF87a', b'GIF89a')):
+        return '.gif'
+    if raw.startswith(b'RIFF') and raw[8:12] == b'WEBP':
+        return '.webp'
+    return ''
+
+
+def chat_status(msgs=None):
+    msgs = msgs if msgs is not None else load_chat()
+    home = [m for m in msgs if (m.get('book_id') or 'home') == 'home']
+    mine = next((m for m in reversed(home) if m.get('sender') == '小羊'), None)
+    reply = next((m for m in reversed(home) if m.get('sender') != '小羊'), None)
+    heartbeat = {}
+    if os.path.exists(CHAT_HEARTBEAT_FILE):
+        try:
+            with open(CHAT_HEARTBEAT_FILE, encoding='utf-8') as f:
+                heartbeat = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            heartbeat = {}
+    heartbeat_ts = float(heartbeat.get('ts') or 0)
+    cc_online = bool(heartbeat_ts and time.time() - heartbeat_ts < 45)
+    waiting = bool(mine and (not reply or mine.get('ts', 0) > reply.get('ts', 0)))
+    return {
+        'api': 'online',
+        'route': 'cc-tg',
+        'cc_online': cc_online,
+        'cc_status_known': bool(heartbeat_ts),
+        'heartbeat_ts': heartbeat_ts or None,
+        'waiting': waiting,
+        'last_user_ts': mine.get('ts') if mine else None,
+        'last_reply_ts': reply.get('ts') if reply else None,
+    }
 
 DEEP_HL_FILE = os.path.join(DATA_DIR, 'deep_highlights.json')
 
@@ -171,6 +328,91 @@ def load_book_meta(book_id):
 def save_book_meta(book_id, meta):
     with open(os.path.join(META_DIR, f'{book_id}.json'), 'w') as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)
+
+
+def load_vault_manifest():
+    if not os.path.exists(VAULT_MANIFEST_FILE):
+        return {'books': []}
+    try:
+        with open(VAULT_MANIFEST_FILE, encoding='utf-8') as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {'books': []}
+    except (OSError, json.JSONDecodeError):
+        return {'books': []}
+
+
+def _notebook_section(section_id, title, subtitle=''):
+    return {
+        'id': section_id,
+        'title': title,
+        'subtitle': subtitle,
+        'highlights': [],
+        'questions': [],
+    }
+
+
+def build_deep_notebook(book_id):
+    manifest = load_vault_manifest()
+    book = next((b for b in manifest.get('books', []) if str(b.get('id')) == str(book_id)), None)
+    if not book:
+        return None
+    chapter_map = {str(c.get('id')): c for c in book.get('chapters', [])}
+    section_map = {}
+
+    def get_section(chapter_id):
+        chapter = chapter_map.get(chapter_id, {})
+        title = chapter.get('title') or chapter_id
+        return section_map.setdefault(
+            chapter_id,
+            _notebook_section(chapter_id, title, f'章节 {chapter_id}'),
+        )
+
+    highlights = load_deep_hl()
+    prefix = f'{book_id}/'
+    for unit_key, items in highlights.items():
+        if not str(unit_key).startswith(prefix):
+            continue
+        rest = str(unit_key)[len(prefix):]
+        parts = rest.split('/', 1)
+        chapter_id = parts[0]
+        unit = parts[1] if len(parts) > 1 else ''
+        section = get_section(chapter_id)
+        for item in items if isinstance(items, list) else []:
+            section['highlights'].append({
+                'id': item.get('id', ''),
+                'text': item.get('text', ''),
+                'note': item.get('note', ''),
+                'unit': unit,
+                'ts': item.get('ts'),
+            })
+
+    chat_prefix = f'vault:{book_id}/'
+    for message in load_chat():
+        context = str(message.get('book_id') or '')
+        if message.get('sender') != '小羊' or not context.startswith(chat_prefix):
+            continue
+        rest = context[len(chat_prefix):]
+        parts = rest.split('/', 1)
+        chapter_id = parts[0]
+        unit = parts[1] if len(parts) > 1 else ''
+        section = get_section(chapter_id)
+        section['questions'].append({
+            'id': message.get('id', ''),
+            'text': message.get('text', ''),
+            'unit': unit,
+            'ts': message.get('ts'),
+        })
+
+    chapter_order = {str(c.get('id')): i for i, c in enumerate(book.get('chapters', []))}
+    ordered = sorted(section_map.values(), key=lambda s: chapter_order.get(s['id'], 10 ** 6))
+    return {
+        'book': {'id': str(book_id), 'title': book.get('title') or f'《{book_id}》', 'kind': 'deep'},
+        'sections': ordered,
+        'counts': {
+            'highlights': sum(len(s['highlights']) for s in ordered),
+            'questions': sum(len(s['questions']) for s in ordered),
+        },
+    }
 
 
 def split_pages(text):
@@ -234,6 +476,14 @@ class ReadHandler(BaseHTTPRequestHandler):
             book_id = params.get('id', [''])[0]
             self._json(load_book_meta(book_id))
 
+        elif path == '/api/read/notebook':
+            book_id = params.get('id', [''])[0]
+            notebook = build_deep_notebook(book_id)
+            if notebook is None:
+                self._json({'error': 'book not found'}, 404)
+            else:
+                self._json(notebook)
+
         elif path == '/api/read/deep-highlights':
             unit = params.get('unit', [''])[0]
             data = load_deep_hl()
@@ -253,9 +503,15 @@ class ReadHandler(BaseHTTPRequestHandler):
         elif path == '/api/read/chat':
             since = float(params.get('since', ['0'])[0])
             msgs = load_chat()
+            book_id = params.get('book_id', [''])[0]
+            if book_id:
+                msgs = [m for m in msgs if str(m.get('book_id') or '') == book_id]
             if since > 0:
                 msgs = [m for m in msgs if m.get('ts', 0) > since]
             self._json(msgs)
+
+        elif path == '/api/read/chat-status':
+            self._json(chat_status())
 
         elif path == '/api/read/search':
             book_id = params.get('id', [''])[0]
@@ -417,33 +673,38 @@ class ReadHandler(BaseHTTPRequestHandler):
 
         elif parsed.path == '/api/read/chat-image':
             if 'multipart/form-data' in content_type:
+                content_length = int(self.headers.get('Content-Length', 0))
+                if content_length > CHAT_IMAGE_LIMIT + 1024 * 1024:
+                    self._json({'error': 'image too large', 'limit': CHAT_IMAGE_LIMIT}, 413)
+                    return
                 env = {'REQUEST_METHOD': 'POST', 'CONTENT_TYPE': content_type}
                 form = cgi.FieldStorage(fp=self.rfile, headers=self.headers, environ=env)
                 item = form['file'] if 'file' in form else None
                 if item is None or not item.file:
                     self._json({'error': 'no file'}, 400)
                     return
+                raw = item.file.read(CHAT_IMAGE_LIMIT + 1)
+                if len(raw) > CHAT_IMAGE_LIMIT:
+                    self._json({'error': 'image too large', 'limit': CHAT_IMAGE_LIMIT}, 413)
+                    return
+                ext = image_extension(raw)
+                if not ext:
+                    self._json({'error': 'unsupported image'}, 415)
+                    return
+                text = str(form.getvalue('text', '') or '').strip()
+                if len(text) > CHAT_TEXT_LIMIT:
+                    self._json({'error': 'text too long', 'limit': CHAT_TEXT_LIMIT}, 413)
+                    return
                 imgdir = os.path.join(DATA_DIR, 'chatimg')
                 os.makedirs(imgdir, exist_ok=True)
-                ext = os.path.splitext(item.filename or 'x.jpg')[1][:8] or '.jpg'
-                name = f'{int(time.time()*1000)}{ext}'
+                name = f'{int(time.time()*1000)}-{uuid.uuid4().hex[:8]}{ext}'
                 with open(os.path.join(imgdir, name), 'wb') as f:
-                    f.write(item.file.read())
+                    f.write(raw)
                 url = f'/chatimg/{name}'
-                msgs = load_chat()
-                msg = {
-                    'id': str(int(time.time() * 1000)),
-                    'sender': form.getvalue('sender', '小羊'),
-                    'text': form.getvalue('text', ''),
-                    'img': url,
-                    'page': -1,
-                    'book_id': form.getvalue('book_id', 'home'),
-                    'ts': time.time(),
-                }
-                msgs.append(msg)
-                if len(msgs) > 500:
-                    msgs = msgs[-500:]
-                save_chat(msgs)
+                sender = str(form.getvalue('sender', '小羊') or '小羊')[:20]
+                book_id = str(form.getvalue('book_id', 'home') or 'home')[:500]
+                client_id = str(form.getvalue('client_id', '') or '')[:100]
+                msg = append_chat(new_message(sender, text, -1, book_id, url, client_id))
                 # 图片同样不回响 TG；福福从 Monitor 事件里拿路径自己看
                 # if msg['sender'] == '小羊':
                 #     tg_notify(f'🖼️家里聊天发来图片 {url}\n{msg["text"]}')
@@ -499,22 +760,20 @@ class ReadHandler(BaseHTTPRequestHandler):
             sender = body.get('sender', '小羊')
             page = body.get('page', -1)
             book_id = body.get('book_id', '')
+            client_id = body.get('client_id', '')
             if not text:
                 self._json({'error': 'empty'}, 400)
                 return
-            msgs = load_chat()
-            msg = {
-                'id': str(int(time.time() * 1000)),
-                'sender': sender,
-                'text': text,
-                'page': page,
-                'book_id': book_id,
-                'ts': time.time(),
-            }
-            msgs.append(msg)
-            if len(msgs) > 500:
-                msgs = msgs[-500:]
-            save_chat(msgs)
+            if len(text) > CHAT_TEXT_LIMIT:
+                self._json({'error': 'text too long', 'limit': CHAT_TEXT_LIMIT}, 413)
+                return
+            sender = str(sender or '小羊')[:20]
+            book_id = str(book_id or '')[:500]
+            try:
+                page = int(page)
+            except (TypeError, ValueError):
+                page = -1
+            msg = append_chat(new_message(sender, text, page, book_id, client_id=client_id))
             # 家里线路自成一体：福福的 Monitor 实时盯 chat.json，不再回响到 TG
             # if sender == '小羊':
             #     page_label = f'p{page+1}' if page >= 0 else ''
@@ -541,15 +800,27 @@ class ReadHandler(BaseHTTPRequestHandler):
     def _json(self, data, code=200):
         self.send_response(code)
         self.send_header('Content-Type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        allowed_origin = os.environ.get('HOME_ALLOWED_ORIGIN', '')
+        origin = self.headers.get('Origin', '')
+        if allowed_origin and origin == allowed_origin:
+            self.send_header('Access-Control-Allow-Origin', allowed_origin)
+            self.send_header('Vary', 'Origin')
+            self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+            self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()
         self.wfile.write(json.dumps(data, ensure_ascii=False).encode())
 
     def do_OPTIONS(self):
-        self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
+        allowed_origin = os.environ.get('HOME_ALLOWED_ORIGIN', '')
+        origin = self.headers.get('Origin', '')
+        if not allowed_origin or origin != allowed_origin:
+            self.send_response(403)
+            self.end_headers()
+            return
+        self.send_response(204)
+        self.send_header('Access-Control-Allow-Origin', allowed_origin)
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()

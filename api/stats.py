@@ -4,6 +4,8 @@ import subprocess
 import os
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
+from memory_config import LMC5_DB
+
 class StatsHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path.split('?')[0]
@@ -113,7 +115,7 @@ class StatsHandler(BaseHTTPRequestHandler):
             except:
                 services.append({'name': name, 'status': 'unknown'})
         # LMC-5 是个 sqlite 库不是常驻进程，看库在不在就行
-        db = '/var/www/home/api/lmc5_memory.db'
+        db = str(LMC5_DB)
         services.append({'name': 'LMC-5', 'status': 'online' if os.path.exists(db) else 'offline'})
         return services
 

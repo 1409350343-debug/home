@@ -6,7 +6,12 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="icon" type="image/png" href="/static/favicon-32.png">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
-<title>书柜</title>
+<title>Study</title>
+<script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<link rel="stylesheet" href="/static/common.css?v=20">
+<link rel="stylesheet" href="/static/core-nav.css?v=14">
+<script src="/static/common.js?v=2"></script>
+<script src="/static/core-nav.js?v=4"></script>
 <style>
   @font-face{font-family:'Yozai';src:url('/static/yozai.woff2') format('woff2');font-display:swap}
   :root{
@@ -14,14 +19,15 @@
     --ink:#1c3350; --ink2:#4c6a8c; --ink3:#8aa3bd;
     --accent:#2f7dc4; --deep:#1d5a96; --soft:#d9e9f8; --line:#dbe6f2;
   }
-  html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
-  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   body{background:var(--bg);color:var(--ink);
     font-family:'Yozai',-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
     padding:18px 14px 60px;-webkit-user-select:none;user-select:none}
   .wrap{max-width:880px;margin:0 auto}
-  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+  header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:4px}
   h1{font-size:22px;letter-spacing:1px}
+  .head-actions{display:flex;align-items:center;gap:8px}
+  .record-btn{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);
+    border-radius:10px;font-size:12px;padding:7px 11px;color:var(--ink2);text-decoration:none;white-space:nowrap}
   #gear{background:var(--card);border:1px solid var(--line);border-radius:10px;
     font-size:16px;padding:6px 12px;cursor:pointer;color:var(--ink2)}
   .sub{color:var(--ink2);font-size:12px;margin-bottom:18px}
@@ -47,6 +53,8 @@
     position:relative;z-index:1}
   .badge{font-size:10px;color:var(--ink2);display:flex;align-items:center;gap:4px;justify-content:center}
   .badge i{width:6px;height:6px;border-radius:50%;display:inline-block}
+  .note-link{border:1px solid var(--line);background:rgba(255,255,255,.7);color:var(--ink2);
+    border-radius:9px;padding:6px 8px;font-size:11px;font-family:inherit;cursor:pointer}
   .prog{height:3px;background:var(--line);border-radius:2px;overflow:hidden}
   .prog b{display:block;height:100%;background:var(--accent)}
   .empty{background:var(--card);border:1.5px dashed var(--line);border-radius:14px;padding:26px;
@@ -80,19 +88,11 @@
 </head>
 <body>
 <div class="wrap">
-  <header><h1>📚 书柜</h1><button id="gear">⚙️</button></header>
-  <div class="sub">点一下直接读 · 长按选浅读还是深读</div>
+  <header><h1 class="english-page-title">Study</h1><div class="head-actions"><a class="record-btn" href="/reading-board.html">阅读记录 ›</a><button id="gear">⚙️</button></div></header>
+  <div class="sub">书架 · 每本书都有自己的笔记本</div>
 
   <h2>书</h2>
   <div class="grid" id="books"></div>
-  <a href="/reading-board.html" style="display:flex;align-items:center;gap:10px;margin:18px 0 8px;padding:13px 16px;border-radius:14px;background:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.66);text-decoration:none;color:inherit;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)">
-    <span style="font-size:16px">📊</span>
-    <span style="flex:1;font-size:13px">陪读看板 · 书架进度与阅读统计</span>
-    <span style="font-size:12px;opacity:0.5">›</span>
-  </a>
-
-  <h2>论文</h2>
-  <div id="papers"><div class="empty">论文架还空着 🎓<br>把 PDF 论文发给福福，他切好就会出现在这里<br>（读研的人，迟早用得上）</div></div>
 </div>
 
 <!-- 长按菜单 -->
@@ -114,10 +114,10 @@
   <div class="row" id="fonts"></div>
 </div></div>
 
-<script src="/static/theme.js?v=32"></script>
+<script src="/static/theme.js?v=40"></script>
 <script>
 const $=id=>document.getElementById(id);
-let novels=[], deeps=[];
+let deeps=[];
 
 const BLUE_THEMES=new Set(['blue','night','iceteal','seasalt']);
 function applyCover(el,idx){
@@ -136,8 +136,13 @@ function bookEl(b,idx){
   el.innerHTML=`<div class="cover" data-idx="${idx}">
       <div class="t">${b.title.replace(/</g,'&lt;')}</div><div class="a">${b.author||''}</div></div>
     <div class="prog"><b style="width:${pct}%"></b></div>
-    <div class="badge"><i style="background:var(--accent)"></i>${b.kind==='novel'?'小说 · 浅读':'经典 · 深读'}${pct?` · ${pct}%`:''}</div>`;
+    <div class="badge"><i style="background:var(--accent)"></i>深读${pct?` · ${pct}%`:''}</div>
+    <button class="note-link">📝 这本的笔记</button>`;
   applyCover(el.querySelector('.cover'),idx);
+  el.querySelector('.note-link').onclick=e=>{
+    e.stopPropagation();
+    location.href=`/book-notebook.html?id=${encodeURIComponent(b.id)}`;
+  };
   let timer=null;
   el.addEventListener('click',()=>{if(!el.dataset.held)location.href=b.href;delete el.dataset.held;});
   el.addEventListener('contextmenu',e=>{e.preventDefault();pick(b);});
@@ -149,14 +154,10 @@ function bookEl(b,idx){
 
 function pick(b){
   $('pk-title').textContent=b.title;
-  const opts=[];
-  if(b.kind==='novel'){
-    opts.push({ic:'📖',t:'浅读',s:'翻页阅读 · 划线 · 和福福聊',href:`/read.html?book=${encodeURIComponent(b.id)}`});
-    opts.push({ic:'🔬',t:'深读',s:'这本还没进深读系统 · 想要就喊福福搬',dis:true});
-  }else{
-    opts.push({ic:'🔬',t:'深读',s:'逐段精读 · 注解 · 批注 · 陪读',href:b.href});
-    opts.push({ic:'📖',t:'浅读',s:'这本还没进浅读系统 · 想要就喊福福搬',dis:true});
-  }
+  const opts=[
+    {ic:'🔬',t:'深读',s:'逐段精读 · 注解 · 批注 · 陪读',href:b.href},
+    {ic:'📝',t:'这本的笔记',s:'按章节整理划线、批注和提问',href:`/book-notebook.html?id=${encodeURIComponent(b.id)}`}
+  ];
   $('pk-opts').innerHTML=opts.map((o,i)=>`<div class="opt${o.dis?' dis':''}" data-i="${i}">
     <span class="ic">${o.ic}</span><span class="d">${o.t}<small>${o.s}</small></span></div>`).join('');
   document.querySelectorAll('#pk-opts .opt').forEach((el,i)=>{
@@ -168,11 +169,6 @@ function pick(b){
 async function load(){
   const grid=$('books');
   try{
-    const shelf=await (await fetch('/api/read/shelf')).json();
-    novels=(shelf||[]).map(b=>({kind:'novel',id:b.id,title:b.title.replace(/^《|》.*$/g,'')||b.title,author:(b.title.match(/作者[:：]?(.+?)》?$/)||[])[1]||'',
-      done:b.progress||0,total:b.pages||0,href:`/read.html?book=${encodeURIComponent(b.id)}`}));
-  }catch(e){}
-  try{
     const man=await (await fetch('/vault/manifest.json')).json();
     deeps=(man.books||[]).map(b=>{
       const done=b.chapters.filter(c=>c.done).length;
@@ -180,9 +176,9 @@ async function load(){
         href:`/read-deep.html?book=${encodeURIComponent(b.id)}`};
     });
   }catch(e){}
-  const all=[...deeps,...novels];
+  const all=[...deeps];
   grid.innerHTML='';
-  if(!all.length){grid.innerHTML='<div class="empty">书柜空空，发书给福福入库～</div>';return;}
+  if(!all.length){grid.innerHTML='<div class="empty">深读书柜还是空的<br>把书交给福福整理成章节后，就会出现在这里。</div>';return;}
   all.forEach((b,i)=>grid.appendChild(bookEl(b,i)));
 }
 
@@ -200,6 +196,7 @@ $('gear').onclick=()=>{renderSettings();$('settings').classList.add('show');};
 document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('show');}));
 
 load();
+window.addEventListener('DOMContentLoaded',()=>renderCoreNav('study'));
 </script>
 </body>
 </html>

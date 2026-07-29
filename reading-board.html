@@ -7,18 +7,21 @@
 <link rel="icon" type="image/png" href="/static/favicon-32.png">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <title>陪读看板</title>
+<script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<link rel="stylesheet" href="/static/common.css?v=20">
+<link rel="stylesheet" href="/static/core-nav.css?v=14">
+<script src="/static/common.js?v=2"></script>
+<script src="/static/core-nav.js?v=4"></script>
 <style>
   @font-face{font-family:'Yozai';src:url('/static/yozai.woff2') format('woff2');font-display:swap}
 
   :root{
     --bg:#edf3fa; --card:#ffffff; --card2:#f4f8fd;
     --ink:#1c3350; --ink2:#4c6a8c; --ink3:#8aa3bd;
-    --accent:#2f7dc4; --accent-dark:#1d5a96; --accent-soft:#d9e9f8;
-    --border:#dbe6f2; --ring-track:#e2ecf7;
-    --hm0:#e4edf7; --hm1:#c2dcf3; --hm2:#8fc0e8; --hm3:#4a92cf; --hm4:#1d5a96;
+    --accent:#88ad73; --accent-dark:#648b58; --accent-soft:#e7efdc;
+    --border:#dce8cf; --ring-track:#eaf0df;
+    --hm0:#edf2e5; --hm1:#dce8ce; --hm2:#bdd3a8; --hm3:#91b675; --hm4:#628d55;
   }
-  html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
-  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   body{
     background:var(--bg); color:var(--ink);
     font-family:'Yozai',-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
@@ -26,6 +29,10 @@
   }
   .wrap{max-width:860px;margin:0 auto}
   header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:6px 2px 20px}
+  .head-title{display:flex;align-items:center;gap:10px}
+  .back-shelf{width:34px;height:34px;border-radius:11px;background:var(--accent-soft);color:var(--accent-dark);
+    display:flex;align-items:center;justify-content:center;text-decoration:none;border:1px solid var(--border)}
+  .back-shelf svg{width:18px;height:18px}
   h1{font-size:22px;font-weight:700;letter-spacing:.5px}
   h1 .fox{margin-right:6px}
   .date-chip{font-size:12px;color:var(--ink2);background:var(--card);border:1px solid var(--border);
@@ -56,11 +63,13 @@
   .go{display:block;text-align:center;background:var(--accent);color:#fff8ef;text-decoration:none;
     font-size:14px;font-weight:600;letter-spacing:2px;padding:10px 0;border-radius:10px}
   .go:active{background:var(--accent-dark)}
+  .book-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+  .book-actions .note{background:var(--accent-soft);color:var(--accent-dark)}
   .empty{background:var(--card);border:1px dashed var(--border);border-radius:16px;padding:28px;
     text-align:center;color:var(--ink3);font-size:13px;line-height:2}
 
   /* 活动热力图 */
-  .hm-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;overflow-x:auto}
+  .hm-card{background:rgba(249,252,242,.86);border:1px solid #d5e3c7;border-radius:16px;padding:16px;overflow-x:auto}
   .hm-grid{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,12px);gap:3px;width:max-content}
   .hm-cell{width:12px;height:12px;border-radius:3px;background:var(--hm0)}
   .hm-legend{display:flex;align-items:center;gap:4px;justify-content:flex-end;margin-top:10px;
@@ -80,12 +89,12 @@
     .shelf{grid-template-columns:1fr}
   }
 </style>
-<script src="/static/theme.js?v=32"></script>
+<script src="/static/theme.js?v=40"></script>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1><span class="fox">🦊</span>陪读看板</h1>
+    <div class="head-title"><a class="back-shelf" href="/shelf.html" aria-label="返回书架"><i data-lucide="arrow-left"></i></a><h1 class="english-page-title"><span class="fox">🦊</span>Reading Record</h1></div>
     <span class="date-chip" id="today"></span>
   </header>
 
@@ -96,8 +105,7 @@
     <div class="tile"><div class="num" id="st-mark">–</div><div class="lbl">摘录 · 书签</div></div>
   </div>
 
-  <h2>书 架</h2>
-  <div class="shelf" id="shelf"></div>
+  <div class="shelf" id="shelf" hidden></div>
 
   <h2>阅读活动</h2>
   <div class="hm-card">
@@ -138,14 +146,20 @@ function ring(pct){
 
 async function main(){
   let shelf=[], chat=[];
-  try{ shelf = await (await fetch('/api/read/shelf')).json() || []; }catch(e){}
-  try{ chat  = await (await fetch('/api/read/chat')).json() || []; }catch(e){}
+  try{
+    const manifest=await (await fetch('/vault/manifest.json')).json();
+    shelf=(manifest.books||[]).map(b=>({id:b.id,title:b.title||`《${b.id}》`,vault:true,chapters:b.chapters||[]}));
+  }catch(e){}
+  try{
+    const allChat=await (await fetch('/api/read/chat')).json() || [];
+    chat=allChat.filter(m=>String(m.book_id||'').startsWith('vault:'));
+  }catch(e){}
 
   /* ---- 书架 ---- */
   const shelfEl = $('shelf');
   let totalMarks = 0;
   if(!shelf.length){
-    shelfEl.innerHTML = `<div class="empty">书架还空着<br>把电子书发给福福，或在阅读页上传，就能开始共读啦</div>`;
+    shelfEl.innerHTML = `<div class="empty">深读书柜还空着<br>把书交给福福整理成章节，就能开始共读。</div>`;
   }
   for(const b of shelf){
     const card = document.createElement('div');
@@ -155,9 +169,7 @@ async function main(){
       /* 深读书房的书：进度看章节活动，不看"页" */
       let chapters=[], hl=0;
       try{
-        const mani = await (await fetch('/vault/manifest.json')).json();
-        const mb = (mani.books||[]).find(x=>x.id===b.id);
-        chapters = mb ? mb.chapters : [];
+        chapters = b.chapters || [];
       }catch(e){}
       try{
         const allHl = await (await fetch('/api/read/deep-highlights')).json();
@@ -182,32 +194,14 @@ async function main(){
         </div>
         <div class="book-meta">🖍 划线 <b>${hl}</b> 条 · 💬 讨论 <b>${msgs.length}</b> 条<br>
         🕐 最近：${lastTs?fmtDate(new Date(lastTs*1000)):'—'}</div>
-        <a class="go" href="/read-deep.html?book=${encodeURIComponent(b.id)}">去书房深读</a>`;
+        <div class="book-actions">
+          <a class="go" href="/read-deep.html?book=${encodeURIComponent(b.id)}">继续深读</a>
+          <a class="go note" href="/book-notebook.html?id=${encodeURIComponent(b.id)}">这本的笔记</a>
+        </div>`;
       shelfEl.appendChild(card);
       continue;
     }
 
-    let hl=0, bm=0;
-    try{
-      const meta = await (await fetch('/api/read/meta?id='+encodeURIComponent(b.id))).json();
-      hl=(meta.highlights||[]).length; bm=(meta.bookmarks||[]).length;
-    }catch(e){}
-    totalMarks += hl+bm;
-    const pct = b.pages ? Math.min(1,(b.progress||0)/b.pages) : 0;
-    const msgs = chat.filter(m=>m.book_id===String(b.id));
-    const lastTs = Math.max(b.uploaded_at||0, ...msgs.map(m=>m.ts||0));
-    card.innerHTML = `
-      <div class="book-top">
-        <div class="ring">${ring(pct)}</div>
-        <div>
-          <div class="book-title">${b.title}</div>
-          <div class="book-meta">读到 <b>${b.progress||0}</b> / ${b.pages} 页</div>
-        </div>
-      </div>
-      <div class="book-meta">✏️ 摘录 <b>${hl}</b> 条 · 🔖 书签 <b>${bm}</b> 个 · 💬 讨论 <b>${msgs.length}</b> 条<br>
-      🕐 最近：${lastTs?fmtDate(new Date(lastTs*1000)):'—'}</div>
-      <a class="go" href="/read.html?book=${encodeURIComponent(b.id)}">继续陪读</a>`;
-    shelfEl.appendChild(card);
   }
   $('st-mark').textContent = totalMarks;
 
@@ -261,6 +255,7 @@ async function main(){
     (rows.length? rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('') : '<tr><td colspan="2">还没有记录</td></tr>');
 }
 main();
+window.addEventListener('DOMContentLoaded',()=>renderCoreNav('study'));
 </script>
 </body>
 </html>

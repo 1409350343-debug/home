@@ -1,0 +1,325 @@
+/*
+ * 小窝 · 首页与记忆空间的共享视觉层
+ * 只覆盖外观，不改变页面功能和主题变量。
+ */
+:root {
+  --home-radius-xl: 26px;
+  --home-radius-lg: 20px;
+  --home-shadow: 0 18px 50px rgba(53, 82, 125, 0.12);
+  --home-shadow-soft: 0 8px 28px rgba(53, 82, 125, 0.08);
+  --home-glass: rgba(255, 255, 255, 0.68);
+  --home-glass-strong: rgba(255, 255, 255, 0.82);
+}
+
+body.home-page,
+body.memory-page {
+  position: relative;
+  isolation: isolate;
+  letter-spacing: 0.01em;
+}
+
+body.home-page::before,
+body.memory-page::before {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--accent, #6f92c8) 18%, transparent) 0 7%, transparent 27%),
+    radial-gradient(circle at 88% 28%, color-mix(in srgb, var(--soft, #dce9f8) 68%, transparent) 0 9%, transparent 31%),
+    radial-gradient(circle at 42% 96%, rgba(255, 255, 255, 0.48) 0 12%, transparent 34%);
+}
+
+body.home-page button,
+body.home-page a,
+body.memory-page button,
+body.memory-page a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 首页 */
+.home-page .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  margin: 0 auto;
+  padding-top: max(10px, env(safe-area-inset-top));
+  background: color-mix(in srgb, var(--bg, #edf3fa) 72%, transparent);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.46);
+}
+
+.home-page .hero,
+.home-page .half,
+.home-page .card {
+  border: 1px solid rgba(255, 255, 255, 0.66) !important;
+  box-shadow: var(--home-shadow-soft);
+  backdrop-filter: blur(20px) saturate(1.12);
+  -webkit-backdrop-filter: blur(20px) saturate(1.12);
+}
+
+.home-page .hero {
+  border-radius: 30px;
+  box-shadow: var(--home-shadow);
+}
+
+.home-page .hero .big-days {
+  text-shadow: 0 8px 24px color-mix(in srgb, var(--accent, #5b7ec2) 18%, transparent);
+}
+
+.home-page .ava {
+  border: 3px solid rgba(255, 255, 255, 0.82);
+  box-shadow: 0 8px 24px rgba(48, 74, 112, 0.16);
+}
+
+.home-page .half,
+.home-page .card {
+  border-radius: var(--home-radius-lg);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.home-page .mood-row button,
+.home-page .mood-row span {
+  transition: transform 160ms ease, filter 160ms ease;
+}
+
+.home-page .mood-row button:active,
+.home-page .mood-row span:active {
+  transform: scale(0.9);
+}
+
+.home-page .nav {
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow: 0 -8px 32px rgba(44, 71, 111, 0.1);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+}
+
+.home-page .nav .tab {
+  transition: color 160ms ease, transform 160ms ease;
+}
+
+.home-page .nav .tab:active {
+  transform: translateY(2px);
+}
+
+/* 记忆空间通用 */
+.memory-page .header,
+.memory-brain .wrap,
+.memory-page .search-bar,
+.memory-page .category-list,
+.memory-page .search-results,
+.memory-category .memory-list {
+  width: min(100%, 820px);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.memory-page .header {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  padding-top: max(16px, env(safe-area-inset-top));
+  background: color-mix(in srgb, var(--bg, #edf3fa) 70%, transparent);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.memory-page .header h1,
+.memory-brain header h1 {
+  letter-spacing: -0.02em;
+}
+
+.memory-page .back-btn,
+.memory-page .archive-btn,
+.memory-archive header button {
+  box-shadow: 0 5px 15px rgba(50, 77, 116, 0.1);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.memory-page .back-btn:active,
+.memory-page .archive-btn:active,
+.memory-archive header button:active {
+  transform: scale(0.94);
+}
+
+.memory-page .search-bar input,
+.memory-brain #search {
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  background: var(--home-glass-strong);
+  box-shadow: 0 8px 24px rgba(49, 76, 115, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.memory-page .search-bar input:focus,
+.memory-brain #search:focus {
+  border-color: color-mix(in srgb, var(--accent, #5b7ec2) 48%, white);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--accent, #5b7ec2) 15%, transparent);
+}
+
+.memory-home .category-card,
+.memory-category .memory-card,
+.memory-brain .mem,
+.memory-archive .item {
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: var(--home-glass);
+  box-shadow: var(--home-shadow-soft);
+  backdrop-filter: blur(18px) saturate(1.08);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.memory-home .category-card:hover,
+.memory-category .memory-card:hover,
+.memory-brain .mem:hover,
+.memory-archive .item:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent, #5b7ec2) 24%, white);
+  box-shadow: var(--home-shadow);
+}
+
+.memory-home .cat-icon {
+  background: color-mix(in srgb, var(--soft, #d9e9f8) 78%, white);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+}
+
+.memory-home .cat-count,
+.memory-category .count-badge,
+.memory-brain .stat,
+.memory-brain .chip,
+.memory-category .tag,
+.memory-category .type-badge {
+  border: 1px solid rgba(255, 255, 255, 0.64);
+  box-shadow: 0 3px 12px rgba(55, 83, 122, 0.06);
+}
+
+.memory-category .memory-list,
+.memory-brain .grid,
+.memory-archive #list {
+  gap: 14px;
+}
+
+.memory-category .memory-card,
+.memory-brain .mem,
+.memory-archive .item {
+  border-radius: var(--home-radius-lg);
+}
+
+.memory-page .modal-overlay,
+.memory-brain #modal {
+  background: rgba(25, 41, 64, 0.26);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.memory-page .modal,
+.memory-brain .sheet {
+  border: 1px solid rgba(255, 255, 255, 0.76);
+  box-shadow: 0 -16px 60px rgba(27, 47, 77, 0.2);
+  background: color-mix(in srgb, var(--card, #fff) 92%, transparent);
+}
+
+.memory-category .save-btn,
+.memory-category .delete-btn,
+.memory-archive .item button {
+  min-height: 38px;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent, #5b7ec2) 18%, transparent);
+  transition: transform 160ms ease, opacity 160ms ease;
+}
+
+.memory-category .save-btn:active,
+.memory-category .delete-btn:active,
+.memory-archive .item button:active {
+  transform: scale(0.97);
+}
+
+/* 记忆屋 */
+.memory-brain .wrap {
+  padding-left: 18px;
+  padding-right: 18px;
+}
+
+.memory-brain header {
+  padding: 12px 2px 4px;
+}
+
+.memory-brain .tabs {
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-radius: 14px;
+  width: fit-content;
+}
+
+.memory-brain .tabs button {
+  border-radius: 10px;
+  transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.memory-brain .tabs button.on {
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--accent, #5b7ec2) 18%, transparent);
+}
+
+.memory-brain .chips {
+  scrollbar-width: none;
+}
+.memory-brain .chips::-webkit-scrollbar { display: none; }
+
+/* 回收站 */
+.memory-archive header,
+.memory-archive #list {
+  width: min(100%, 820px);
+}
+
+.memory-archive header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: max(10px, env(safe-area-inset-top)) 0 12px;
+  background: color-mix(in srgb, var(--bg, #edf3fa) 72%, transparent);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.memory-archive .why,
+.memory-page #modalWhy,
+.memory-brain .why {
+  border-left-color: var(--accent, #5b7ec2) !important;
+  background: color-mix(in srgb, var(--soft, #d9e9f8) 78%, transparent) !important;
+}
+
+@media (hover: none) {
+  .memory-home .category-card:hover,
+  .memory-category .memory-card:hover,
+  .memory-brain .mem:hover,
+  .memory-archive .item:hover {
+    transform: none;
+    box-shadow: var(--home-shadow-soft);
+  }
+}
+
+@media (max-width: 560px) {
+  :root {
+    --home-radius-xl: 22px;
+    --home-radius-lg: 17px;
+  }
+  .home-page .hero { border-radius: 25px; }
+  .memory-page .header { padding-left: 14px; padding-right: 14px; }
+  .memory-brain .wrap { padding-left: 14px; padding-right: 14px; }
+  .memory-category .memory-list { padding-left: 14px; padding-right: 14px; }
+  .memory-archive { padding-left: 14px; padding-right: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-page *,
+  .memory-page * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

@@ -7,6 +7,9 @@
 <link rel="icon" type="image/png" href="/static/favicon-32.png">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <title>和福福聊天</title>
+<link rel="stylesheet" href="/static/common.css?v=20">
+<script src="/static/common.js?v=2"></script>
+<script src="/static/chat-client.js?v=1"></script>
 <style>
   @font-face{font-family:'Yozai';src:url('/static/yozai.woff2') format('woff2');font-display:swap}
   :root{
@@ -14,8 +17,6 @@
     --ink:#1c3350; --ink2:#4c6a8c; --ink3:#8aa3bd;
     --accent:#2f7dc4; --deep:#1d5a96; --soft:#d9e9f8; --line:#dbe6f2;
   }
-  html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
-  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{height:100%}
   body{background:#c9d6e2 url('/static/bg-butterfly.jpg') center/cover fixed;color:var(--ink);display:flex;flex-direction:column;
     font-family:'Yozai',-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
@@ -26,7 +27,12 @@
   header a{color:var(--ink2);text-decoration:none;font-size:18px}
   header .t{flex:1}
   header .t b{font-size:16px;display:block}
-  header .t small{font-size:11px;color:var(--ink3)}
+  header .t small{font-size:11px;color:var(--ink3);display:flex;align-items:center;gap:6px;line-height:1.5}
+  .line-dot{width:7px;height:7px;border-radius:50%;background:#96a8ba;box-shadow:0 0 0 3px rgba(150,168,186,.14);flex:none}
+  .line-dot.ok{background:#58a879;box-shadow:0 0 0 3px rgba(88,168,121,.14)}
+  .line-dot.wait{background:#d99b3d;box-shadow:0 0 0 3px rgba(217,155,61,.14);animation:pulse 1.8s ease-in-out infinite}
+  .line-dot.off{background:#c96a6a;box-shadow:0 0 0 3px rgba(201,106,106,.14)}
+  @keyframes pulse{50%{opacity:.48;transform:scale(.82)}}
   header .ava{width:44px;height:44px;border-radius:50%;object-fit:cover;
     border:1px solid var(--line);flex:none;background:var(--card2)}
   #msgs{flex:1;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:12px;
@@ -37,6 +43,9 @@
     white-space:pre-wrap;word-break:break-word}
   .msg .bub img{max-width:100%;border-radius:12px;border:1px solid var(--line)}
   .msg .meta{font-size:10px;color:var(--ink3);padding:0 4px}
+  .msg .delivery{cursor:default}
+  .msg .delivery.failed{color:#b84e55;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+  .msg.pending .bub{opacity:.76}
   .msg .avm{width:36px;height:36px;border-radius:50%;object-fit:cover;
     border:1px solid var(--line);flex:none;background:var(--card2)}
   .msg.me{align-self:flex-end;flex-direction:row-reverse}
@@ -56,22 +65,8 @@
     max-height:110px;font-family:inherit;outline:none}
   #bar button{flex:none;border:none;border-radius:12px;font-size:15px;cursor:pointer;padding:10px 14px}
   #send{background:var(--accent);color:#fff}
+  #send:disabled,#pic:disabled{opacity:.52;cursor:wait}
   #pic{background:var(--card2);border:1px solid var(--line)!important;color:var(--ink2)}
-  /* 应急设置 */
-  #sb{position:fixed;inset:0;background:rgba(15,35,60,.45);display:none;z-index:20;align-items:flex-end;justify-content:center}
-  #sb.show{display:flex}
-  #sb .sheet{background:var(--card);width:100%;max-width:480px;border-radius:18px 18px 0 0;
-    padding:18px 18px calc(26px + env(safe-area-inset-bottom))}
-  @media(min-width:520px){#sb{align-items:center}#sb .sheet{border-radius:18px}}
-  #sb h3{font-size:15px;margin-bottom:4px}
-  #sb .hint{font-size:12px;color:var(--ink3);line-height:1.8;margin-bottom:12px}
-  #sb input[type=text]{width:100%;border:1px solid var(--line);border-radius:10px;background:var(--card2);
-    color:var(--ink);font-size:13px;padding:10px 12px;outline:none;margin-bottom:10px}
-  #sb .swrow{display:flex;justify-content:space-between;align-items:center;background:var(--card2);
-    border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;font-size:14px}
-  #sb .swrow small{display:block;font-size:11px;color:var(--ink3)}
-  #sb button{width:100%;border:none;background:var(--accent);color:#fff;border-radius:10px;
-    padding:11px 0;font-size:14px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -81,8 +76,8 @@
     <img class="ava" src="/static/img/fufu/portrait.jpg?v=2" alt="福福">
     <img class="ava" src="/static/avatar-xiaoyang.jpg" alt="小羊" style="margin-left:-14px;z-index:-1;position:relative">
   </div>
-  <div class="t"><b>福福 & 小羊</b><small>自家线路 · 不走电报 · 我那边实时听着</small></div>
-  <a href="javascript:void(0)" id="gear" style="font-size:16px">⚙️</a>
+  <div class="t"><b>福福 & 小羊</b><small><span class="line-dot" id="line-dot"></span><span id="line-status">正在连接小窝…</span></small></div>
+  <a href="/settings.html" id="gear" style="font-size:16px" aria-label="打开设置">⚙️</a>
 </header>
 <div id="msgs"></div>
 <div id="bar">
@@ -91,54 +86,139 @@
   <button id="send">发送</button>
   <input type="file" id="file" accept="image/*" hidden>
 </div>
-<div id="sb"><div class="sheet">
-  <h3>应急备胎设置</h3>
-  <div class="hint">平时不用动。哪天联系不上福福了：买一串API key贴在下面→打开接班开关→照服务器里 standby-fufu/README-小白版.md 跑三行命令，备胎福福就带着全部记忆上岗。</div>
-  <input type="text" id="sb-key" placeholder="API key（sk-ant-… 或 sk-…），已存的不会显示原文">
-  <div class="swrow"><span>备胎接班<small>开着时备胎才会说话</small></span><input type="checkbox" id="sb-on" style="width:20px;height:20px;accent-color:var(--accent)"></div>
-  <button id="sb-save">保存</button>
-</div></div>
-<script src="/static/theme.js?v=32"></script>
+<script src="/static/theme.js?v=40"></script>
 <script>
 const $=id=>document.getElementById(id);
-let lastTs=0, seen=new Set();
-const esc=s=>(s||'').replace(/</g,'&lt;');
+let lastTs=0, seen=new Set(), latestHome=[], pollBusy=false, routeStatus=null, lastStatusCheck=0;
+const esc=HomeChat.escapeHtml;
 const T=ts=>new Date(ts*1000).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+const safeImg=src=>{
+  try{
+    const u=new URL(src,location.origin);
+    return (u.origin===location.origin||u.protocol==='blob:')?u.href:'';
+  }catch(e){return '';}
+};
+const clientId=HomeChat.clientId;
+
+function setLine(kind,text){
+  $('line-dot').className='line-dot '+kind;
+  $('line-status').textContent=text;
+}
+function relativeTime(ts){
+  const sec=Math.max(0,Date.now()/1000-ts);
+  if(sec<60)return '刚刚';
+  if(sec<3600)return Math.floor(sec/60)+' 分钟前';
+  if(sec<86400)return Math.floor(sec/3600)+' 小时前';
+  return Math.floor(sec/86400)+' 天前';
+}
+function updateLine(){
+  const home=latestHome.filter(m=>(m.book_id||'home')==='home');
+  const mine=[...home].reverse().find(m=>m.sender==='小羊');
+  const fox=[...home].reverse().find(m=>m.sender!=='小羊');
+  if(routeStatus&&routeStatus.cc_status_known){
+    if(routeStatus.cc_online){
+      setLine(routeStatus.waiting?'wait':'ok',routeStatus.waiting?'CC 在线 · 已收到小窝消息':'CC 在线 · TG 通道保持联通');
+    }else{
+      setLine('off','CC 心跳已中断 · TG/CC 通道可能离线');
+    }
+    return;
+  }
+  if(mine&&(!fox||(mine.ts||0)>(fox.ts||0))){
+    const waited=Date.now()/1000-(mine.ts||0);
+    setLine('wait',waited>120?'已等待 '+relativeTime(mine.ts)+' · CC 状态未知':'消息已存入小窝 · 等待福福查看');
+  }else if(fox){
+    setLine('ok','小窝线路可达 · 福福 '+relativeTime(fox.ts)+'回复');
+  }else{
+    setLine('ok','小窝线路可达 · 等你说话');
+  }
+}
+async function refreshRouteStatus(){
+  if(Date.now()-lastStatusCheck<5000)return;
+  lastStatusCheck=Date.now();
+  try{
+    routeStatus=await HomeChat.jsonRequest('/api/read/chat-status');
+  }catch(e){
+    routeStatus=null;
+  }
+}
 
 function ctxLabel(bid){
   if(!bid||bid==='home')return '';
   return '📖';
 }
-function add(m){
-  if(seen.has(m.id))return; seen.add(m.id);
+function add(m,localState){
+  if(!localState&&seen.has(m.id))return null;
+  if(!localState)seen.add(m.id);
   const me=m.sender==='小羊';
   const el=document.createElement('div');
-  el.className='msg '+(me?'me':'fox');
+  el.className='msg '+(me?'me':'fox')+(localState?' pending':'');
   const ctx=ctxLabel(m.book_id);
   const av=me?`<img class="avm" src="/static/avatar-xiaoyang.jpg" alt="小羊">`
             :`<img class="avm" src="/static/img/fufu/portrait.jpg?v=2" alt="福福">`;
-  el.innerHTML=`${av}<div class="col"><div class="bub">${m.img?`<img src="${m.img}">`:''}${m.img&&m.text?'<br>':''}${esc(m.text)}</div>
-    <div class="meta">${T(m.ts)}${ctx?' '+ctx:''}</div></div>`;
+  const img=safeImg(m.img);
+  const delivery=me?`<span class="delivery">${localState||' · 已存入小窝'}</span>`:'';
+  el.innerHTML=`${av}<div class="col"><div class="bub">${img?`<img src="${img}" alt="聊天图片">`:''}${img&&m.text?'<br>':''}${esc(m.text)}</div>
+    <div class="meta">${T(m.ts)}${ctx?' '+ctx:''}${delivery}</div></div>`;
   $('msgs').appendChild(el);
+  return el;
 }
 function scrollBottom(){ $('msgs').scrollTop=$('msgs').scrollHeight; }
 
 async function poll(first){
+  if(pollBusy)return;
+  pollBusy=true;
   try{
-    const msgs=await (await fetch('/api/read/chat?since='+lastTs)).json();
+    const response=await fetch('/api/read/chat?since='+lastTs,{cache:'no-store'});
+    if(!response.ok)throw new Error('line unavailable');
+    const msgs=await response.json();
     let added=false;
-    for(const m of msgs){ add(m); if(m.ts>lastTs)lastTs=m.ts; added=true; }
+    for(const m of msgs){
+      if(!latestHome.some(x=>x.id===m.id))latestHome.push(m);
+      if(add(m)){added=true;}
+      if(m.ts>lastTs)lastTs=m.ts;
+    }
+    latestHome=latestHome.slice(-500);
+    await refreshRouteStatus();
+    updateLine();
     if(added&&(first||$('msgs').scrollHeight-$('msgs').scrollTop-$('msgs').clientHeight<160))scrollBottom();
-  }catch(e){}
+  }catch(e){
+    setLine('off','小窝线路未连接 · 消息暂时无法送达');
+  }finally{
+    pollBusy=false;
+  }
 }
-async function send(){
+
+function markFailed(el,retry){
+  el.classList.remove('pending');
+  const status=el.querySelector('.delivery');
+  status.textContent=' · 发送失败，点这里重试';
+  status.classList.add('failed');
+  status.onclick=retry;
+  setLine('off','发送失败 · 可以点击消息下方重试');
+}
+async function postText(t,el,id){
+  const status=el.querySelector('.delivery');
+  el.classList.add('pending');
+  status.classList.remove('failed');
+  status.textContent=' · 发送中';
+  status.onclick=null;
+  try{
+    const response=await fetch('/api/read/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:t,sender:'小羊',page:-1,book_id:'home',client_id:id})});
+    if(!response.ok)throw new Error('send failed');
+    const r=await response.json();
+    if(!r.msg)throw new Error('missing message');
+    el.remove();
+    latestHome.push(r.msg);
+    add(r.msg); updateLine(); scrollBottom();
+  }catch(e){markFailed(el,()=>postText(t,el,id));}
+}
+function send(){
   const t=$('txt').value.trim(); if(!t)return;
   $('txt').value=''; $('txt').style.height='auto';
-  try{
-    const r=await (await fetch('/api/read/chat',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({text:t,sender:'小羊',page:-1,book_id:'home'})})).json();
-    if(r.msg){add(r.msg);scrollBottom();}
-  }catch(e){alert('没发出去，再试试');}
+  const el=add({sender:'小羊',text:t,book_id:'home',ts:Date.now()/1000},' · 发送中');
+  scrollBottom();
+  postText(t,el,clientId());
 }
 $('send').onclick=send;
 $('txt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
@@ -146,31 +226,32 @@ $('txt').addEventListener('input',function(){this.style.height='auto';this.style
 $('pic').onclick=()=>$('file').click();
 $('file').onchange=async function(){
   if(!this.files[0])return;
-  const fd=new FormData();
-  fd.append('file',this.files[0]); fd.append('sender','小羊'); fd.append('book_id','home');
-  fd.append('text',$('txt').value.trim()); $('txt').value='';
+  const file=this.files[0], text=$('txt').value.trim(), preview=URL.createObjectURL(file), id=clientId();
+  const el=add({sender:'小羊',text,img:preview,book_id:'home',ts:Date.now()/1000},' · 图片上传中');
+  scrollBottom();
+  $('txt').value='';
+  const upload=async()=>{
+    const fd=new FormData();
+    fd.append('file',file); fd.append('sender','小羊'); fd.append('book_id','home');
+    fd.append('text',text); fd.append('client_id',id);
+    const status=el.querySelector('.delivery');
+    el.classList.add('pending'); status.classList.remove('failed');
+    status.textContent=' · 图片上传中'; status.onclick=null;
   try{
-    const r=await (await fetch('/api/read/chat-image',{method:'POST',body:fd})).json();
-    if(r.msg){add(r.msg);scrollBottom();}
-  }catch(e){alert('图片没发出去');}
+      const response=await fetch('/api/read/chat-image',{method:'POST',body:fd});
+      if(!response.ok)throw new Error('upload failed');
+      const r=await response.json();
+      if(!r.msg)throw new Error('missing message');
+      el.remove(); URL.revokeObjectURL(preview);
+      latestHome.push(r.msg);
+      add(r.msg); updateLine(); scrollBottom();
+    }catch(e){markFailed(el,upload);}
+  };
+  upload();
   this.value='';
 };
-$('gear').onclick=async()=>{
-  try{const c=await (await fetch('/api/read/standby-config')).json();
-    $('sb-key').placeholder=c.key_masked?('已保存：'+c.key_masked+'（想换就输入新的）'):'API key（sk-ant-… 或 sk-…）';
-    $('sb-on').checked=!!c.enabled;
-  }catch(e){}
-  $('sb').classList.add('show');
-};
-$('sb').addEventListener('click',e=>{if(e.target.id==='sb')$('sb').classList.remove('show');});
-$('sb-save').onclick=async()=>{
-  const body={enabled:$('sb-on').checked};
-  const k=$('sb-key').value.trim(); if(k)body.key=k;
-  await fetch('/api/read/standby-config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  $('sb-key').value=''; $('sb').classList.remove('show');
-};
 poll(true).then(scrollBottom);
-setInterval(poll,5000);
+setInterval(poll,2500);
 </script>
 </body>
 </html>

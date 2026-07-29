@@ -10,10 +10,10 @@ import re
 import sqlite3
 import sys
 
-sys.path.insert(0, "/root/lmc-5/src")
-from lmc5.store import MemoryStore
+from memory_config import LMC5_DB, LMC5_TOOL
+from memory_schema import ensure_memory_schema, record_history
 
-DB_PATH = "/var/www/home/api/lmc5_memory.db"
+DB_PATH = str(LMC5_DB)
 
 try:
     import jieba
@@ -254,7 +254,7 @@ def should_split(row):
 def split_memory(row):
     """Split a memory into individual events."""
     content = strip_why_remembered(row["content"])
-    date = extract_date(content, row["created_at"])
+    date = row["event_date"] or extract_date(content, row["created_at"])
 
     if re.search(r'【[^】]+】', content):
         events = split_by_sections(content)
@@ -336,11 +336,11 @@ def execute():
     """Actually perform the splits."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    ensure_memory_schema(conn)
     rows = conn.execute(
         "SELECT * FROM memories WHERE status='current' ORDER BY id"
     ).fetchall()
 
-    store = MemoryStore(DB_PATH)
     archived = 0
     inserted = 0
 
@@ -352,34 +352,75 @@ def execute():
         if not events:
             continue
 
-        conn.execute(
-            "UPDATE memories SET status='archived' WHERE id=?",
-            (row["id"],)
-        )
-        archived += 1
-
-        for ev in events:
-            tags_json = json.dumps(ev["tags"], ensure_ascii=False)
-            content_hash = hashlib.sha256(ev["content"].encode()).hexdigest()[:16]
-            try:
-                conn.execute("""
-                    INSERT INTO memories (title, content, thread, category, tags_json,
-                        status, valence, arousal, hit_count, created_at, source, content_hash)
-                    VALUES (?, ?, ?, ?, ?, 'current', ?, ?, 0, ?, 'split', ?)
-                """, (
-                    ev["title"],
-                    ev["content"],
-                    ev["thread"],
-                    ev["category"],
-                    tags_json,
-                    ev.get("valence", 0.0),
-                    ev.get("arousal", 0.3),
-                    row["created_at"],
-                    content_hash,
+        # 每条原记忆单独使用保存点：只有所有拆分项都成功写入（或已经
+        # 存在）后，才归档原记忆。中途失败会完整回滚，避免丢记忆。
+        savepoint = f"split_{row['id']}"
+        conn.execute(f"SAVEPOINT {savepoint}")
+        inserted_for_memory = 0
+        try:
+            for ev in events:
+                tags_json = json.dumps(ev["tags"], ensure_ascii=False)
+                content_hash = hashlib.sha256(ev["content"].encode()).hexdigest()[:16]
+                why = (
+                    row["why_remembered"]
+                    or f"从组合记忆「{row['title']}」拆分，便于独立召回"
+                )
+                try:
+                    cur = conn.execute("""
+                        INSERT INTO memories (title, content, thread, category, tags_json,
+                            status, valence, arousal, hit_count, created_at, event_date,
+                            source, content_hash, why_remembered)
+                        VALUES (?, ?, ?, ?, ?, 'current', ?, ?, 0, ?, ?, 'split', ?, ?)
+                    """, (
+                        ev["title"],
+                        ev["content"],
+                        ev["thread"],
+                        ev["category"],
+                        tags_json,
+                        ev.get("valence", 0.0),
+                        ev.get("arousal", 0.3),
+                        row["created_at"],
+                        ev.get("date") or row["event_date"],
+                        content_hash,
+                        why,
                     ))
-            except sqlite3.IntegrityError:
-                continue
-            inserted += 1
+                    inserted_for_memory += 1
+                    record_history(
+                        conn,
+                        cur.lastrowid,
+                        "created_by_split",
+                        why,
+                    )
+                except sqlite3.IntegrityError:
+                    # 重跑拆分时，已有的 current 子记忆视为成功覆盖；
+                    # 若冲突来自其他情况，则回滚并保留原记忆。
+                    existing = conn.execute(
+                        "SELECT id FROM memories "
+                        "WHERE content_hash=? AND status='current'",
+                        (content_hash,),
+                    ).fetchone()
+                    if existing is None:
+                        raise
+
+            record_history(
+                conn,
+                row["id"],
+                "archived_after_split",
+                f"已拆分为 {len(events)} 条独立记忆",
+                snapshot=dict(row),
+            )
+            conn.execute("""
+                UPDATE memories SET status='archived' WHERE id=?
+            """, (row["id"],))
+            conn.execute(f"RELEASE SAVEPOINT {savepoint}")
+        except Exception as exc:
+            conn.execute(f"ROLLBACK TO SAVEPOINT {savepoint}")
+            conn.execute(f"RELEASE SAVEPOINT {savepoint}")
+            print(f"Skipped id={row['id']} ({row['title']}): {exc}")
+            continue
+
+        archived += 1
+        inserted += inserted_for_memory
 
     conn.commit()
     conn.close()
@@ -389,7 +430,7 @@ def execute():
     if jieba:
         print("Rebuilding FTS...")
         import subprocess
-        subprocess.run(["python3", "/var/www/home/api/lmc5_tool.py", "rebuild-fts"])
+        subprocess.run([sys.executable, str(LMC5_TOOL), "rebuild-fts"], check=True)
 
     print("Done!")
 

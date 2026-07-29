@@ -32,6 +32,26 @@ def save_post(post):
     with open(p, 'w') as f:
         json.dump(post, f, ensure_ascii=False, indent=2)
 
+def public_post(post, summary=False):
+    """封存期内只返回元数据，避免前端绕过界面直接看到正文。"""
+    locked = float(post.get('unlock_at') or 0) > time.time()
+    data = {
+        'id': post['id'],
+        'content': '' if locked else post.get('content', ''),
+        'mood': post.get('mood', ''),
+        'author': post.get('author', 'sheep'),
+        'coauthored': bool(post.get('coauthored')),
+        'tags': post.get('tags', []),
+        'unlock_at': post.get('unlock_at', 0),
+        'locked': locked,
+        'entry_date': post.get('entry_date', ''),
+        'created_at': post.get('created_at', 0),
+        'comment_count': len(post.get('comments', [])),
+    }
+    if not summary and not locked:
+        data['comments'] = post.get('comments', [])
+    return data
+
 
 def list_posts(limit=50):
     posts = []
@@ -44,13 +64,7 @@ def list_posts(limit=50):
         try:
             with open(os.path.join(DATA_DIR, fname)) as f:
                 post = json.load(f)
-            posts.append({
-                'id': post['id'],
-                'content': post.get('content', ''),
-                'mood': post.get('mood', ''),
-                'created_at': post.get('created_at', 0),
-                'comment_count': len(post.get('comments', [])),
-            })
+            posts.append(public_post(post, summary=True))
         except:
             pass
     posts.sort(key=lambda x: -x['created_at'])
@@ -72,7 +86,7 @@ class DiaryHandler(BaseHTTPRequestHandler):
             if post_id:
                 post = load_post(post_id)
                 if post:
-                    self._json(post)
+                    self._json(public_post(post))
                 else:
                     self._json({'error': 'not found'}, 404)
             else:
@@ -89,6 +103,9 @@ class DiaryHandler(BaseHTTPRequestHandler):
         if parsed.path == '/api/diary/write':
             content = body.get('content', '')
             mood = body.get('mood', '')
+            author = body.get('author', 'sheep')
+            tags = body.get('tags', [])
+            unlock_at = float(body.get('unlock_at') or 0)
             now = time.time()
             post_id = str(int(now * 1000))
 
@@ -96,6 +113,11 @@ class DiaryHandler(BaseHTTPRequestHandler):
                 'id': post_id,
                 'content': content,
                 'mood': mood,
+                'author': author,
+                'coauthored': bool(body.get('coauthored')),
+                'tags': tags if isinstance(tags, list) else [],
+                'unlock_at': unlock_at,
+                'entry_date': body.get('entry_date', ''),
                 'comments': [],
                 'created_at': now,
             }

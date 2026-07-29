@@ -1,276 +1,285 @@
 #!/usr/bin/env python3
+"""记忆角 API：直接读取 LMC-5 SQLite，与主动召回共用同一数据源。"""
 import json
+import hmac
 import os
-import re
-import yaml
+import sqlite3
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-BUCKETS_DIR = '/root/ombre-brain/buckets'
-CATEGORY_MAP_FILE = '/var/www/home/api/memory_categories.json'
-
-CATEGORIES = [
-    {'id': 'us', 'name': '狐狸和羊', 'desc': '我们俩的基本信息', 'icon': 'heart'},
-    {'id': 'rules', 'name': '小羊说明书', 'desc': '聊天规则和互动偏好', 'icon': 'book-open'},
-    {'id': 'daily', 'name': '关于小羊', 'desc': '日常、学校、喜好', 'icon': 'sun'},
-    {'id': 'milestones', 'name': '高光时刻', 'desc': '重要的回忆和里程碑', 'icon': 'star'},
-    {'id': 'secret', 'name': '秘密花园', 'desc': '只属于我们的秘密', 'icon': 'lock'},
-]
-
-TAG_RULES = {
-    'us': ['核心', '身份', '关系', '基本信息'],
-    'rules': ['反馈', '规则', '偏好', '称呼', '写作', '聊天'],
-    'daily': ['日常', '趣事', '学校', '生活', '游戏'],
-    'milestones': ['里程碑', '重要', '记录', '表白', '故事'],
-    'secret': ['亲密', '性', 'play', 'nsfw', '骨科', '并蒂'],
-}
-
-KEYWORD_RULES = {
-    'us': ['生日', '在一起', '纪念', '身高', '我叫福福', '周宥霖'],
-    'rules': ['不要', '不许', '应该', '称呼', '说明书', '小羊要求', '小羊说', '小羊希望', '以后要', '不能'],
-    'daily': ['学校', '南京', '新疆', '猫', '游戏', '戴夫', '波西亚', '家乡', '奇台'],
-    'milestones': ['第一次', '里程碑', '放弃', '爱你', '表白', '故事', '拼豆'],
-    'secret': ['play', '骚', '按摩', '亲密', '玩具', '骨科', '并蒂', '聊黄', '情趣'],
-}
+from memory_config import LMC5_DB, MEMORY_API_TOKEN
+from memory_schema import ensure_memory_schema, memory_snapshot, record_history
 
 
-def load_category_overrides():
-    if os.path.exists(CATEGORY_MAP_FILE):
-        try:
-            with open(CATEGORY_MAP_FILE) as f:
-                return json.load(f)
-        except:
-            pass
-    return {}
+UNCATEGORIZED = "uncategorized"
 
 
-def save_category_overrides(overrides):
-    with open(CATEGORY_MAP_FILE, 'w') as f:
-        json.dump(overrides, f, ensure_ascii=False, indent=2)
+def connect_db():
+    if not os.path.exists(LMC5_DB):
+        raise FileNotFoundError(f"memory database not found: {LMC5_DB}")
+    conn = sqlite3.connect(LMC5_DB)
+    conn.row_factory = sqlite3.Row
+    ensure_memory_schema(conn)
+    return conn
 
 
-def classify_bucket(bucket_id, tags, content, overrides):
-    if bucket_id in overrides:
-        return overrides[bucket_id]
-
-    tags_lower = [t.lower() for t in tags]
-    content_lower = content.lower()
-
-    scores = {cat: 0 for cat in TAG_RULES}
-
-    for cat, cat_tags in TAG_RULES.items():
-        for t in cat_tags:
-            if t.lower() in tags_lower:
-                scores[cat] += 3
-
-    for cat, keywords in KEYWORD_RULES.items():
-        for kw in keywords:
-            if kw.lower() in content_lower:
-                scores[cat] += 1
-
-    best = max(scores, key=scores.get)
-    if scores[best] > 0:
-        return best
-    return 'daily'
-
-
-def parse_bucket_file(filepath):
-    with open(filepath, 'r', encoding='utf-8') as f:
-        raw = f.read()
-
-    match = re.match(r'^---\n(.*?)\n---\n(.*)', raw, re.DOTALL)
-    if not match:
-        return None
-
+def parse_tags(value):
+    if not value:
+        return []
     try:
-        meta = yaml.safe_load(match.group(1))
-    except:
-        return None
+        tags = json.loads(value)
+    except (TypeError, json.JSONDecodeError):
+        return []
+    return tags if isinstance(tags, list) else [str(tags)]
 
-    content = match.group(2).strip()
+
+def category_id(row):
+    """保留数据库的实际值；category 为空时才回退到 thread。"""
+    return row["category"] or row["thread"] or UNCATEGORIZED
+
+
+def importance(row):
+    """兼容旧页面的 1~10 展示，不改变数据库中的真实字段。"""
+    keys = set(row.keys())
+    if "importance" in keys and row["importance"] is not None:
+        try:
+            return max(1, min(10, int(row["importance"])))
+        except (TypeError, ValueError):
+            pass
+    urgency = row["urgency"] if "urgency" in keys else None
+    return {"urgent": 10, "high": 9, "low": 3}.get(urgency, 5)
+
+
+def serialize_memory(row):
+    keys = set(row.keys())
+    content = row["content"] or ""
+    created = row["event_date"] or row["created_at"] or ""
+    updated = row["updated_at"] if "updated_at" in keys else ""
+    tier = row["tier"] if "tier" in keys else ""
     return {
-        'id': meta.get('id', ''),
-        'tags': meta.get('tags', []),
-        'importance': meta.get('importance', 5),
-        'pinned': meta.get('pinned', False),
-        'type': meta.get('type', 'dynamic'),
-        'created': meta.get('created', ''),
-        'last_active': meta.get('last_active', ''),
-        'valence': meta.get('valence', 0.5),
-        'arousal': meta.get('arousal', 0.3),
-        'content': content,
+        "id": row["id"],
+        "title": row["title"] or "",
+        "preview": content[:120] + ("..." if len(content) > 120 else ""),
+        "content": content,
+        "category": category_id(row),
+        "thread": row["thread"] or "",
+        "status": row["status"] or "",
+        "tier": tier or "",
+        "importance": importance(row),
+        "pinned": bool(row["pinned"]) if "pinned" in keys else False,
+        "type": tier or row["thread"] or "",
+        "tags": parse_tags(row["tags_json"]),
+        "created": str(created),
+        "last_active": str(updated or ""),
+        "valence": row["valence"] if "valence" in keys else None,
+        "arousal": row["arousal"] if "arousal" in keys else None,
+        "why_remembered": (
+            row["why_remembered"] if "why_remembered" in keys else ""
+        ) or "",
     }
 
 
+def load_current_rows(conn):
+    return conn.execute(
+        "SELECT * FROM memories WHERE status='current' ORDER BY id DESC"
+    ).fetchall()
+
+
+def build_categories(rows):
+    counts = {}
+    for row in rows:
+        cid = category_id(row)
+        counts[cid] = counts.get(cid, 0) + 1
+    return [
+        {
+            "id": cid,
+            "name": "未分类" if cid == UNCATEGORIZED else cid,
+            "desc": "数据库中的现有分类",
+            "icon": "folder",
+            "count": count,
+        }
+        for cid, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    ]
+
+
 def get_all_memories():
-    overrides = load_category_overrides()
-    memories = {cat['id']: [] for cat in CATEGORIES}
-
-    for bucket_type in ['permanent', 'dynamic']:
-        base = os.path.join(BUCKETS_DIR, bucket_type)
-        if not os.path.exists(base):
-            continue
-        for domain in os.listdir(base):
-            domain_path = os.path.join(base, domain)
-            if not os.path.isdir(domain_path):
-                continue
-            for fname in os.listdir(domain_path):
-                if not fname.endswith('.md'):
-                    continue
-                fpath = os.path.join(domain_path, fname)
-                bucket = parse_bucket_file(fpath)
-                if not bucket:
-                    continue
-                cat = classify_bucket(bucket['id'], bucket['tags'], bucket['content'], overrides)
-                preview = bucket['content'][:120] + ('...' if len(bucket['content']) > 120 else '')
-                memories[cat].append({
-                    'id': bucket['id'],
-                    'preview': preview,
-                    'content': bucket['content'],
-                    'importance': bucket['importance'],
-                    'pinned': bucket['pinned'],
-                    'type': bucket['type'],
-                    'tags': bucket['tags'],
-                    'created': str(bucket['created']),
-                    'last_active': str(bucket['last_active']),
-                })
-
-    for cat_id in memories:
-        memories[cat_id].sort(key=lambda x: (-int(x['pinned']), -x['importance']))
-
-    return memories
+    with connect_db() as conn:
+        rows = load_current_rows(conn)
+    categories = build_categories(rows)
+    memories = {cat["id"]: [] for cat in categories}
+    for row in rows:
+        memories[category_id(row)].append(serialize_memory(row))
+    return categories, memories
 
 
 def search_memories(query):
-    overrides = load_category_overrides()
-    results = []
-    query_lower = query.lower()
+    pattern = f"%{query}%"
+    with connect_db() as conn:
+        rows = conn.execute(
+            """SELECT * FROM memories
+               WHERE status='current'
+                 AND (title LIKE ? OR content LIKE ? OR tags_json LIKE ?)
+               ORDER BY id DESC
+               LIMIT 100""",
+            (pattern, pattern, pattern),
+        ).fetchall()
+    return [serialize_memory(row) for row in rows]
 
-    for bucket_type in ['permanent', 'dynamic']:
-        base = os.path.join(BUCKETS_DIR, bucket_type)
-        if not os.path.exists(base):
-            continue
-        for domain in os.listdir(base):
-            domain_path = os.path.join(base, domain)
-            if not os.path.isdir(domain_path):
-                continue
-            for fname in os.listdir(domain_path):
-                if not fname.endswith('.md'):
-                    continue
-                fpath = os.path.join(domain_path, fname)
-                bucket = parse_bucket_file(fpath)
-                if not bucket:
-                    continue
-                if query_lower in bucket['content'].lower() or any(query_lower in t.lower() for t in bucket['tags']):
-                    cat = classify_bucket(bucket['id'], bucket['tags'], bucket['content'], overrides)
-                    results.append({
-                        'id': bucket['id'],
-                        'category': cat,
-                        'preview': bucket['content'][:120],
-                        'content': bucket['content'],
-                        'importance': bucket['importance'],
-                        'tags': bucket['tags'],
-                    })
 
-    results.sort(key=lambda x: -x['importance'])
-    return results
+def update_category(memory_id, category):
+    with connect_db() as conn:
+        before = memory_snapshot(conn, memory_id)
+        cur = conn.execute(
+            """UPDATE memories
+               SET category=?, updated_at=CURRENT_TIMESTAMP
+               WHERE id=? AND status='current'""",
+            (category, memory_id),
+        )
+        if cur.rowcount == 1:
+            old_category = before.get("category") or ""
+            record_history(
+                conn,
+                memory_id,
+                "category_changed",
+                f"{old_category} -> {category}",
+                snapshot=before,
+            )
+        conn.commit()
+    return cur.rowcount == 1
+
+
+def archive_memory(memory_id):
+    with connect_db() as conn:
+        before = memory_snapshot(conn, memory_id)
+        cur = conn.execute(
+            """UPDATE memories
+               SET status='archived',
+                   archived_at=CURRENT_TIMESTAMP,
+                   updated_at=CURRENT_TIMESTAMP
+               WHERE id=? AND status='current'""",
+            (memory_id,),
+        )
+        if cur.rowcount == 1:
+            record_history(conn, memory_id, "archived", snapshot=before)
+        conn.commit()
+    return cur.rowcount == 1
+
+
+def restore_memory(memory_id):
+    with connect_db() as conn:
+        before = memory_snapshot(conn, memory_id)
+        cur = conn.execute(
+            """UPDATE memories
+               SET status='current',
+                   archived_at=NULL,
+                   updated_at=CURRENT_TIMESTAMP
+               WHERE id=? AND status='archived'""",
+            (memory_id,),
+        )
+        if cur.rowcount == 1:
+            record_history(conn, memory_id, "restored", snapshot=before)
+        conn.commit()
+    return cur.rowcount == 1
+
+
+def get_archived_memories():
+    with connect_db() as conn:
+        rows = conn.execute(
+            """SELECT * FROM memories
+               WHERE status='archived'
+               ORDER BY COALESCE(archived_at, updated_at, created_at) DESC"""
+        ).fetchall()
+    return [serialize_memory(row) for row in rows]
+
+
+def get_memory_history(memory_id):
+    with connect_db() as conn:
+        rows = conn.execute(
+            """SELECT id, memory_id, action, reason, snapshot_json, changed_at
+               FROM memory_history WHERE memory_id=?
+               ORDER BY id DESC""",
+            (memory_id,),
+        ).fetchall()
+    return [dict(row) for row in rows]
 
 
 class MemoryHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
-        path = parsed.path
-        params = parse_qs(parsed.query)
-
-        if path == '/api/memory':
-            memories = get_all_memories()
-            data = {'categories': CATEGORIES, 'memories': memories}
-            self._json_response(data)
-
-        elif path == '/api/memory/search':
-            q = params.get('q', [''])[0]
-            if q:
-                results = search_memories(q)
-                self._json_response({'results': results})
+        try:
+            if parsed.path == "/api/memory":
+                categories, memories = get_all_memories()
+                self._json_response({"categories": categories, "memories": memories})
+            elif parsed.path == "/api/memory/search":
+                q = parse_qs(parsed.query).get("q", [""])[0].strip()
+                self._json_response({"results": search_memories(q) if q else []})
+            elif parsed.path == "/api/memory/stats":
+                categories, memories = get_all_memories()
+                stats = {cat["id"]: len(memories[cat["id"]]) for cat in categories}
+                stats["total"] = sum(stats.values())
+                self._json_response(stats)
+            elif parsed.path == "/api/memory/archive":
+                self._json_response({"memories": get_archived_memories()})
+            elif parsed.path == "/api/memory/history":
+                memory_id = int(parse_qs(parsed.query).get("id", [""])[0])
+                self._json_response({"history": get_memory_history(memory_id)})
             else:
-                self._json_response({'results': []})
-
-        elif path == '/api/memory/stats':
-            memories = get_all_memories()
-            stats = {cat_id: len(mems) for cat_id, mems in memories.items()}
-            stats['total'] = sum(stats.values())
-            self._json_response(stats)
-
-        else:
-            self.send_response(404)
-            self.end_headers()
+                self._json_response({"error": "not found"}, 404)
+        except (FileNotFoundError, sqlite3.Error) as exc:
+            self._json_response({"error": str(exc)}, 503)
 
     def do_POST(self):
-        parsed = urlparse(self.path)
-        if parsed.path == '/api/memory/categorize':
-            length = int(self.headers.get('Content-Length', 0))
-            body = json.loads(self.rfile.read(length)) if length else {}
-            bucket_id = body.get('id', '')
-            category = body.get('category', '')
-            if bucket_id and category:
-                overrides = load_category_overrides()
-                overrides[bucket_id] = category
-                save_category_overrides(overrides)
-                self._json_response({'ok': True})
+        try:
+            if not self._write_authorized():
+                self._json_response({"error": "unauthorized"}, 401)
+                return
+            body = self._read_json()
+            memory_id = int(body.get("id"))
+            if self.path == "/api/memory/categorize":
+                category = str(body.get("category") or "").strip()
+                if not category:
+                    self._json_response({"error": "missing category"}, 400)
+                    return
+                ok = update_category(memory_id, category)
+            elif self.path == "/api/memory/delete":
+                # 页面沿用旧接口名称，实际行为改为归档，避免不可恢复地删除。
+                ok = archive_memory(memory_id)
+            elif self.path == "/api/memory/restore":
+                ok = restore_memory(memory_id)
             else:
-                self._json_response({'error': 'missing id or category'}, 400)
-        elif parsed.path == '/api/memory/delete':
-            length = int(self.headers.get('Content-Length', 0))
-            body = json.loads(self.rfile.read(length)) if length else {}
-            bucket_id = body.get('id', '')
-            if bucket_id:
-                deleted = False
-                for bucket_type in ['permanent', 'dynamic']:
-                    base = os.path.join(BUCKETS_DIR, bucket_type)
-                    if not os.path.exists(base):
-                        continue
-                    for domain in os.listdir(base):
-                        domain_path = os.path.join(base, domain)
-                        if not os.path.isdir(domain_path):
-                            continue
-                        for fname in os.listdir(domain_path):
-                            if fname.endswith('.md') and bucket_id in fname:
-                                fpath = os.path.join(domain_path, fname)
-                                os.remove(fpath)
-                                deleted = True
-                                break
-                        if deleted:
-                            break
-                    if deleted:
-                        break
-                self._json_response({'ok': deleted})
-            else:
-                self._json_response({'error': 'missing id'}, 400)
-        else:
-            self.send_response(404)
-            self.end_headers()
+                self._json_response({"error": "not found"}, 404)
+                return
+            self._json_response({"ok": ok}, 200 if ok else 404)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            self._json_response({"error": "invalid request body"}, 400)
+        except (FileNotFoundError, sqlite3.Error) as exc:
+            self._json_response({"error": str(exc)}, 503)
+
+    def _read_json(self):
+        length = int(self.headers.get("Content-Length", 0))
+        return json.loads(self.rfile.read(length)) if length else {}
+
+    def _write_authorized(self):
+        """配置 Token 时保护写操作；未配置时依赖同源和外层站点认证。"""
+        if not MEMORY_API_TOKEN:
+            return True
+        supplied = self.headers.get("X-Memory-Token", "")
+        auth = self.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            supplied = auth[7:]
+        return hmac.compare_digest(supplied, MEMORY_API_TOKEN)
 
     def _json_response(self, data, code=200):
         self.send_response(code)
-        self.send_header('Content-Type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header("Content-Type", "application/json; charset=utf-8")
         self.end_headers()
         self.wfile.write(json.dumps(data, ensure_ascii=False).encode())
-
-    def do_OPTIONS(self):
-        self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        self.end_headers()
 
     def log_message(self, format, *args):
         pass
 
 
-if __name__ == '__main__':
-    server = HTTPServer(('127.0.0.1', 9904), MemoryHandler)
-    print('Memory API running on :9904')
+if __name__ == "__main__":
+    server = HTTPServer(("127.0.0.1", 9904), MemoryHandler)
+    print(f"Memory API running on :9904 using {LMC5_DB}")
     server.serve_forever()

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>记忆回收站</title>
+<link rel="icon" type="image/png" href="/static/favicon-32.png">
+<link rel="stylesheet" href="/static/common.css?v=20">
+<script src="/static/common.js?v=2"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+body{min-height:100vh;padding:16px;background:var(--bg,#e8f0fe);color:var(--ink,#3a4a6b);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+header{display:flex;align-items:center;gap:12px;max-width:760px;margin:0 auto 16px}
+header button{width:36px;height:36px;border:0;border-radius:12px;background:rgba(255,255,255,.65);
+  color:var(--accent,#5b7ec2);cursor:pointer}
+h1{font-size:20px} header span{margin-left:auto;color:var(--ink3,#9aa8c7);font-size:12px}
+#list{max-width:760px;margin:auto;display:grid;gap:10px}
+.item{padding:15px;border-radius:16px;background:rgba(255,255,255,.72);
+  border:1px solid rgba(255,255,255,.8)}
+.item h2{font-size:15px;margin-bottom:7px}.item p{font-size:13px;line-height:1.7;color:var(--ink2,#68799b)}
+.meta{margin-top:9px;font-size:11px;color:var(--ink3,#9aa8c7)}
+.why{margin-top:10px;padding:9px 11px;background:var(--soft,#d9e9f8);border-radius:10px;
+  font-size:12px;line-height:1.6}
+.item button{margin-top:12px;padding:7px 14px;border:0;border-radius:10px;background:var(--accent,#5b7ec2);
+  color:white;cursor:pointer}
+.empty{text-align:center;padding:60px 10px;color:var(--ink3,#9aa8c7)}
+</style>
+<link rel="stylesheet" href="/static/memory-ui.css?v=1">
+<script src="/static/theme.js?v=40"></script>
+</head>
+<body class="memory-page memory-archive">
+<header>
+  <button onclick="location.href='/memory.html'" aria-label="返回"><i data-lucide="chevron-left"></i></button>
+  <h1>记忆回收站</h1>
+  <span id="count">-</span>
+</header>
+<div id="list"></div>
+<script>
+const list = document.getElementById('list');
+async function loadArchive(){
+  try{
+    const res = await fetch('/api/memory/archive');
+    const data = await res.json();
+    const rows = data.memories || [];
+    document.getElementById('count').textContent = rows.length + ' 条';
+    list.innerHTML = rows.length ? rows.map(m => `
+      <article class="item">
+        <h2>${HomeCommon.escapeHtml(m.title || '未命名记忆')}</h2>
+        <p>${HomeCommon.escapeHtml(m.content || '')}</p>
+        ${m.why_remembered ? `<div class="why">为什么记住：${HomeCommon.escapeHtml(m.why_remembered)}</div>` : ''}
+        <div class="meta">${HomeCommon.escapeHtml(m.category || m.thread || '')} · ${HomeCommon.escapeHtml((m.created || '').slice(0,10))}</div>
+        <button onclick="restoreMemory(${Number(m.id)})">恢复</button>
+      </article>`).join('') : '<div class="empty">回收站是空的</div>';
+    lucide.createIcons();
+  }catch(e){ list.innerHTML = '<div class="empty">加载失败，请刷新重试</div>'; }
+}
+async function restoreMemory(id){
+  const res = await fetch('/api/memory/restore', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({id})
+  });
+  if(res.ok) loadArchive();
+}
+loadArchive();
+</script>
+</body>
+</html>

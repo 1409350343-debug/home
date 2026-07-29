@@ -4,9 +4,11 @@ import json
 import sqlite3
 import hashlib
 
-DB_PATH = "/var/www/home/api/lmc5_memory.db"
-OUT_JS = "/var/www/home/starmap/graph.js"
-OUT_JSON = "/var/www/home/starmap/graph.json"
+from memory_config import APP_ROOT, LMC5_DB
+
+DB_PATH = str(LMC5_DB)
+OUT_JS = str(APP_ROOT / "starmap" / "graph.js")
+OUT_JSON = str(APP_ROOT / "starmap" / "graph.json")
 
 THREAD_COLORS = {
     "relationship": "#c9a4b2",

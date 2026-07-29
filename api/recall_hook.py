@@ -18,12 +18,16 @@
 import json, os, re, sqlite3, sys, random, time
 from datetime import datetime
 
-DB = '/var/www/home/api/lmc5_memory.db'
-MEM_DIRS = [
-    '/root/.claude/projects/-var-www-home-api/memory',
-    '/root/.claude/projects/-root/memory',
-]
-LOG = '/var/www/home/data/recall_hook.log'
+from memory_config import (
+    LMC5_DB,
+    MEMORY_NOTE_DIRS,
+    RECALL_EXPLORE_STATE,
+    RECALL_LOG,
+)
+
+DB = str(LMC5_DB)
+MEM_DIRS = [str(path) for path in MEMORY_NOTE_DIRS]
+LOG = str(RECALL_LOG)
 
 NEAR_DAYS = 7           # 近层：这几天的事不用搜就在
 NEAR_N = 6              # 近层最多列几条
@@ -31,7 +35,7 @@ TOP_N = 4               # 远层字面命中取几条
 LINK_N = 2              # 顺 relations 的线再摸几条
 EXPLORE_N = 1           # 探索窗口一次捞几条
 EXPLORE_PER_DAY = 2     # 一天最多抽几次（她2026-07-27说的：每句都抽脑子太累）
-EXPLORE_STATE = '/var/www/home/data/recall_explore.json'
+EXPLORE_STATE = str(RECALL_EXPLORE_STATE)
 DF_MAX = 0.12           # 出现在超过12%条目里的词=没区分度，不拿它搜
 MIN_MATCH = 2           # 至少命中两个有效词
 STRONG = 8.0            # 单个词够罕见也算
@@ -39,6 +43,12 @@ STRONG = 8.0            # 单个词够罕见也算
 FLOW_TAG = '流水'        # 她2026-07-27定的：流水账打这个标签，过了近层就不再被选
 LAMBDA = 0.05           # 衰减速率，约14天半衰期
 LAMBDA_DONE = 0.12      # 已解决的衰减快些，约6天
+
+WRITE_CONTRACT = (
+    "【记忆沉淀规则】本轮若出现未来仍有用、且此前未记录的新事实或明确偏好，"
+    "应在事实确认后调用 lmc5_tool.py add 写入；--why 必须写明此刻为什么值得"
+    "长期记住。不要保存一次性闲聊、密码/令牌，或未经明确同意的高度敏感信息。"
+)
 
 STOP = set('''的 了 是 在 我 你 他 她 它 们 和 与 也 都 就 还 又 而 但 不 没 有 无 会 能 要 想 说 看 去 来 好 吗 呢 吧 啊 呀 啦 嘛 这 那 什么 怎么 为什么 哪 谁 多少 一个 一下 一点 现在 今天 昨天 明天 时候 因为 所以 如果 可以 应该 已经 正在 自己 我们 你们 他们 user users assistant channel source plugin telegram chat_id message_id image_path user_id ts photo'''.split())
 
@@ -141,7 +151,24 @@ def near_layer(rows):
     return fresh[:NEAR_N]
 
 
-def search(rows, words, exclude):
+def fts_candidate_ids(c, words):
+    """先用 FTS 缩小候选；索引缺失或无结果时由调用方降级全表扫描。"""
+    if not words:
+        return set()
+    query = " OR ".join(f'"{word.replace(chr(34), chr(34) * 2)}"' for word in words)
+    try:
+        return {
+            row[0] for row in c.execute(
+                "SELECT rowid FROM memories_fts "
+                "WHERE memories_fts MATCH ? LIMIT 200",
+                (query,),
+            ).fetchall()
+        }
+    except sqlite3.Error:
+        return set()
+
+
+def search(c, rows, words, exclude):
     if not words:
         return [], []
     total = max(len(rows), 1)
@@ -153,9 +180,12 @@ def search(rows, words, exclude):
     if not useful:
         return [], []
 
+    candidate_ids = fts_candidate_ids(c, [w for w, _ in useful])
     scored = []
     for r in rows:
         if r[0] in exclude or is_flow(r):     # 流水账出了近层就不再被选
+            continue
+        if candidate_ids and r[0] not in candidate_ids:
             continue
         blob = (r[1] or '') + (r[2] or '')
         rel, matched = 0.0, 0
@@ -177,18 +207,24 @@ def follow_links(c, seeds, exclude):
     try:
         qs = ','.join('?' * len(seeds))
         rows = c.execute(f'''
-            SELECT m.id, m.title, r.relation_type
+            SELECT m.id, m.title, r.relation_type, m.tags_json
             FROM relations r
             JOIN memories m ON m.id = CASE
                 WHEN r.source_id IN ({qs}) THEN r.target_id ELSE r.source_id END
-            WHERE r.source_id IN ({qs}) OR r.target_id IN ({qs})
+            WHERE (r.source_id IN ({qs}) OR r.target_id IN ({qs}))
+              AND m.status = 'current'
             ORDER BY r.strength DESC''', seeds * 3).fetchall()
     except Exception:
         return []
     out, seen = [], set(exclude)
-    for mid, title, rtype in rows:
+    for mid, title, rtype, tags_json in rows:
         if mid in seen:
             continue
+        try:
+            if FLOW_TAG in json.loads(tags_json or '[]'):
+                continue
+        except Exception:
+            pass
         seen.add(mid)
         out.append((mid, title, rtype))
         if len(out) >= LINK_N:
@@ -335,21 +371,19 @@ def main():
         c = sqlite3.connect(DB)
         rows = c.execute('''SELECT id,title,content,event_date,hit_count,status,
                             urgency,arousal,confidence,valence,tags_json
-                            FROM memories''').fetchall()
+                            FROM memories
+                            WHERE status = 'current' ''').fetchall()
     except Exception:
         return
 
     near = near_layer(rows)
     used = {r[0] for r in near}
-    far, used_words = search(rows, words, used)
+    far, used_words = search(c, rows, words, used)
     used |= {r[0] for r in far}
     linked = follow_links(c, [r[0] for r in far], used)
     used |= {m for m, _, _ in linked}
     old = explore(rows, used)
     files = search_files(words)
-
-    if not (near or far or linked or old or files):
-        return
 
     lines = []
     if near:
@@ -370,6 +404,7 @@ def main():
         lines.append('【本子】' + ' / '.join(files))
     lines.append(f'（用的词：{" ".join(used_words) or "无"}｜'
                  f'取正文：lmc5_tool.py search "词" 或按 id 查库）')
+    lines.append(WRITE_CONTRACT)
 
     touch(c, [r[0] for r in far] + [r[0] for r in old])
     log(f'近{len(near)} 远{len(far)} 线{len(linked)} 探{len(old)} '

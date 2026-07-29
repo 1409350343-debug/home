@@ -3,7 +3,7 @@
 Usage:
     python3 lmc5_tool.py search "拼豆"
     python3 lmc5_tool.py search "拼豆" --limit 5
-    python3 lmc5_tool.py add --title "猫断奶纱布法" --content "..." --thread relationship --tags 猫,断奶
+    python3 lmc5_tool.py add --title "标题" --content "..." --thread THREAD --tags 标签 --why "为什么值得长期记住"
     python3 lmc5_tool.py relate 12 45 same_topic --reason "都是猫相关"
     python3 lmc5_tool.py breath                    # 开机呼吸，浮几条记忆上来
     python3 lmc5_tool.py auto-relate              # scan all memories, build relations
@@ -12,15 +12,19 @@ Usage:
 """
 
 import argparse
+import difflib
 import json
 import re
 import sys
 
-sys.path.insert(0, "/root/lmc-5/src")
+from memory_config import LMC5_DB, LMC5_SRC
+from memory_schema import ensure_memory_schema, record_history
+
+sys.path.insert(0, str(LMC5_SRC))
 
 from lmc5.store import MemoryStore
 
-DB_PATH = "/var/www/home/api/lmc5_memory.db"
+DB_PATH = str(LMC5_DB)
 
 try:
     import jieba
@@ -39,6 +43,30 @@ def _jieba_cut(text: str) -> list[str]:
         return [text]
     words = jieba.lcut(text)
     return [w.strip() for w in words if w.strip() and len(w.strip()) > 0]
+
+
+def _normalized(text: str) -> str:
+    return re.sub(r'\s+', '', (text or '')).lower()
+
+
+def find_similar(conn, title, content, threshold=0.9):
+    """写入前做近重复检查；返回最相似的 current 记忆或 None。"""
+    target = _normalized(f"{title}\n{content}")
+    if len(target) < 12:
+        return None
+    best = None
+    for row in conn.execute(
+        "SELECT id, title, content FROM memories WHERE status='current'"
+    ).fetchall():
+        candidate = _normalized(f"{row['title']}\n{row['content']}")
+        ratio = difflib.SequenceMatcher(None, target, candidate).ratio()
+        if ratio >= threshold and (best is None or ratio > best["ratio"]):
+            best = {
+                "id": row["id"],
+                "title": row["title"],
+                "ratio": ratio,
+            }
+    return best
 
 
 def cmd_search(args):
@@ -85,9 +113,21 @@ def cmd_search(args):
 
 
 def cmd_add(args):
+    if not args.why.strip():
+        raise SystemExit("--why 不能为空：请写明为什么这条信息值得长期记住")
     store = MemoryStore(DB_PATH)
+    ensure_memory_schema(store.conn)
     tags = [t.strip() for t in args.tags.split(',')] if args.tags else []
     valence = float(args.valence) if args.valence else None
+
+    similar = find_similar(store.conn, args.title, args.content)
+    if similar:
+        print(
+            f"Near-duplicate memory id={similar['id']} "
+            f"({similar['ratio']:.0%}): {similar['title']}"
+        )
+        store.close()
+        return
 
     record, is_new = store.add_memory(
         title=args.title,
@@ -98,6 +138,31 @@ def cmd_add(args):
         valence=valence,
         source=args.source or "conversation",
     )
+    if record.id is not None:
+        existing_why = store.conn.execute(
+            "SELECT why_remembered FROM memories WHERE id=?", (record.id,)
+        ).fetchone()
+        why_was_missing = not existing_why or not existing_why[0]
+        if is_new or why_was_missing:
+            store.conn.execute(
+                "UPDATE memories SET why_remembered=? WHERE id=?",
+                (args.why.strip(), record.id),
+            )
+        if is_new:
+            record_history(
+                store.conn,
+                record.id,
+                "created",
+                args.why.strip(),
+            )
+        elif why_was_missing:
+            record_history(
+                store.conn,
+                record.id,
+                "why_backfilled",
+                args.why.strip(),
+            )
+        store.conn.commit()
     if is_new and record.id is not None and HAS_JIEBA:
         title_seg = args.title
         content_seg = args.content
@@ -345,6 +410,11 @@ def main():
     p_add.add_argument("--tags", default="")
     p_add.add_argument("--valence", default=None)
     p_add.add_argument("--source", default="conversation")
+    p_add.add_argument(
+        "--why",
+        required=True,
+        help="为什么这条信息值得长期记住（写入时必填）",
+    )
 
     p_relate = sub.add_parser("relate")
     p_relate.add_argument("source_id", type=int)

@@ -8,6 +8,9 @@
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <title>深读书房</title>
 <script src="/static/marked.min.js"></script>
+<link rel="stylesheet" href="/static/common.css?v=20">
+<script src="/static/common.js?v=2"></script>
+<script src="/static/chat-client.js?v=1"></script>
 <style>
   :root{
     --bg:#e7eef7; --paper:#f9fbfe; --paper2:#eef4fa;
@@ -15,8 +18,6 @@
     --accent:#2f7dc4; --accent-soft:#dcebf9; --border:#d8e4f0;
     --me:var(--accent); --fox:var(--accent-soft);
   }
-  html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
-  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{height:100%}
   body{background:var(--bg);color:var(--ink);
     font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
@@ -128,12 +129,13 @@
     #paper{padding:22px 18px}
   }
 </style>
-<script src="/static/theme.js?v=32"></script>
+<script src="/static/theme.js?v=40"></script>
 </head>
 <body>
 <div id="topbar">
   <button id="btn-side">☰</button>
   <div class="title" id="bar-title">深读书房<small>加载中…</small></div>
+  <button id="btn-notes">📝 笔记</button>
   <button id="btn-chat">💬 福福</button>
 </div>
 <div id="main">
@@ -161,7 +163,7 @@
 <script>
 const $=id=>document.getElementById(id);
 let manifest=null, cur={book:null,ch:null,unit:null}, flat=[]; // flat: 顺序阅读列表
-let lastTs=0, seen=new Set();
+let deepChat=null;
 
 const q=new URLSearchParams(location.search);
 // 位置记忆：每本书各存一份 + 全局最后位置（旧版 deep-pos 只存一份，换本书逛一圈就丢——自动迁移）
@@ -249,6 +251,7 @@ async function open(book,ch,unit){
   const ss=JSON.parse(localStorage.getItem('deep-scroll')||'null');
   if(ss&&ss.book===book&&ss.ch===ch&&ss.unit===unit&&ss.scrollTop) $('page').scrollTop=ss.scrollTop;
   else $('page').scrollTop=0;
+  restartDeepChat();
 }
 
 $('prev').onclick=()=>{const i=flatIdx(); if(i>0){const t=flat[i-1]; open(t.book,t.ch,t.unit);}};
@@ -397,33 +400,50 @@ $('do-note').onclick=async()=>{
 
 /* ---------- 聊天 ---------- */
 function addMsg(m){
-  if(seen.has(m.id)) return; seen.add(m.id);
   const el=document.createElement('div');
   el.className='msg '+(m.sender==='小羊'?'me':'fox');
-  el.innerHTML=`<div class="who">${m.sender==='小羊'?'小羊':'福福 🐶'}</div>${m.text.replace(/</g,'&lt;')}`;
+  el.innerHTML=`<div class="who">${m.sender==='小羊'?'小羊':'福福 🐶'}</div>${HomeChat.escapeHtml(m.text)}`;
   $('msgs').appendChild(el);
   $('msgs').scrollTop=$('msgs').scrollHeight;
 }
 async function poll(){
-  try{
-    const msgs=await (await fetch('/api/read/chat?since='+lastTs)).json();
-    for(const m of msgs){
-      if(String(m.book_id||'').startsWith('vault:')) addMsg(m);
-      lastTs=Math.max(lastTs,m.ts||0);
-    }
-  }catch(e){}
+  if(deepChat)await deepChat.poll();
+}
+function restartDeepChat(){
+  if(!cur.book||!cur.ch||!cur.unit)return;
+  if(deepChat)deepChat.stop();
+  const key='vault:'+unitKey();
+  $('msgs').innerHTML='';
+  deepChat=HomeChat.create({
+    interval:2500,
+    filter:m=>String(m.book_id||'')===key,
+    onMessages:msgs=>msgs.forEach(addMsg),
+  });
+  deepChat.start();
 }
 async function send(){
   const t=$('txt').value.trim(); if(!t) return;
   $('txt').value='';
+  $('send').disabled=true;
   try{
-    const res=await (await fetch('/api/read/chat',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({text:t,sender:'小羊',page:-1,book_id:`vault:${cur.book}/${cur.ch}/${cur.unit}`})})).json();
-    if(res.msg) addMsg(res.msg);
-  }catch(e){}
+    const res=await deepChat.send({text:t,sender:'小羊',page:-1,book_id:`vault:${unitKey()}`});
+    if(res.msg&&!deepChat.seen.has(res.msg.id)){
+      deepChat.seen.add(res.msg.id);
+      addMsg(res.msg);
+    }
+  }catch(e){
+    $('txt').value=t;
+    $('txt').focus();
+    alert('消息没发出去，原文已经放回输入框');
+  }finally{
+    $('send').disabled=false;
+  }
 }
 $('send').onclick=send;
 $('txt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
+$('btn-notes').onclick=()=>{
+  if(cur.book)location.href='/book-notebook.html?id='+encodeURIComponent(cur.book);
+};
 
 /* ---------- 抽屉 ---------- */
 const closeDrawers=()=>{$('side').classList.remove('open');$('chat').classList.remove('open');$('mask').classList.remove('show');};
@@ -458,8 +478,6 @@ $('mask').onclick=closeDrawers;
   if(!start) start=flat.find(x=>x.book==='道德经'&&x.unit!=='raw.md')||flat[0];
   cur.book=start.book;
   await open(start.book,start.ch,start.unit);
-  // 载入全部历史，再定时轮询
-  await poll(); setInterval(poll,6000);
 })();
 </script>
 </body>
