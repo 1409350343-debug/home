@@ -65,6 +65,6 @@
   }
 
   window.HomeTheme={get,set,apply,SCHEMES,FONTS};
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);
-  else apply();
+  apply();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply,{once:true});
 })();
