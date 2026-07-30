@@ -20,6 +20,17 @@ def ensure_memory_schema(conn):
     additions = {
         "why_remembered": "TEXT NOT NULL DEFAULT ''",
         "archived_at": "TEXT",
+        # Z 轴：同一事实在时间上的版本演化。老版本不删除，只结束有效期。
+        "fact_key": "TEXT NOT NULL DEFAULT ''",
+        "fact_value": "TEXT NOT NULL DEFAULT ''",
+        "valid_from": "TEXT",
+        "valid_to": "TEXT",
+        "is_current_fact": "INTEGER NOT NULL DEFAULT 0",
+        "supersedes_id": "INTEGER",
+        "source_message_id": "TEXT NOT NULL DEFAULT ''",
+        "change_reason": "TEXT NOT NULL DEFAULT ''",
+        "review_status": "TEXT NOT NULL DEFAULT 'confirmed'",
+        "steward_reviewed_at": "TEXT",
     }
     for name, declaration in additions.items():
         if name not in columns:
@@ -41,6 +52,18 @@ def ensure_memory_schema(conn):
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_memory_history_memory "
         "ON memory_history(memory_id, changed_at DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_memories_fact_key "
+        "ON memories(fact_key, is_current_fact, review_status)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_memories_fact_validity "
+        "ON memories(fact_key, valid_from, valid_to)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_memories_steward_review "
+        "ON memories(status, steward_reviewed_at, event_date)"
     )
     conn.commit()
 

@@ -1,63 +1,100 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover"><title>Memory</title>
-<link rel="icon" href="/static/favicon-32.png"><script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-<link rel="stylesheet" href="/static/common.css?v=20"><link rel="stylesheet" href="/static/core-nav.css?v=14">
-<script src="/static/common.js?v=2"></script><script src="/static/core-nav.js?v=4"></script><script src="/static/theme.js?v=40"></script>
-<style>
-:root{--accent:#5b8fd4;--ink:#294968;--ink2:#567491;--ink3:#859bb3;--line:rgba(118,148,179,.24)}
-body{margin:0;background:#d6e1e9 url('/static/bg-butterfly.jpg') center/cover fixed;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:0 16px}.wrap{max-width:720px;margin:auto}.head{padding:24px 2px 10px;display:flex;align-items:end;justify-content:space-between}.head h1{margin:0;font-size:24px;font-weight:550}.head .english-page-title{font-size:38px!important;font-weight:400!important}.head small{color:var(--ink3)}
-.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;padding:5px;border-radius:15px;background:rgba(255,255,255,.48);border:1px solid rgba(255,255,255,.7);backdrop-filter:blur(18px)}.tabs button{border:0;background:transparent;border-radius:11px;padding:9px 2px;color:var(--ink3);font-size:13px;font-weight:700}.tabs button.on{background:rgba(255,255,255,.85);color:var(--accent);box-shadow:0 2px 10px rgba(76,108,145,.1)}
-.view{display:none;padding-top:10px}.view.on{display:block}.glass{background:rgba(255,255,255,.62);border:1px solid rgba(255,255,255,.75);border-radius:18px;box-shadow:0 6px 22px rgba(73,104,139,.1);backdrop-filter:blur(20px)}
-.memory-calendar{padding:14px 16px 12px;margin-bottom:9px}.heat-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}.heat-head b{font-size:14px;font-weight:700}.heat-head small{font-size:10px;color:var(--ink3)}.month-heatmaps{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;overflow:hidden}.month-block{min-width:0}.month-block>span{display:block;font-size:10px;font-weight:600;color:var(--ink3);margin:0 0 5px 1px}.month-grid{display:grid;grid-template-rows:repeat(7,10px);grid-auto-flow:column;grid-auto-columns:10px;gap:3px}.memory-cell{width:10px;height:10px;border:0;padding:0;border-radius:3px;background:rgba(91,143,212,.07)}.memory-cell.blank{visibility:hidden}.memory-cell.l1{background:rgba(91,143,212,.23)}.memory-cell.l2{background:rgba(91,143,212,.43)}.memory-cell.l3{background:rgba(91,143,212,.65)}.memory-cell.l4{background:rgba(66,122,190,.9)}.memory-cell.today{outline:1px solid var(--ink2);outline-offset:1px}.memory-cell.selected{transform:scale(1.2)}.cal-legend{display:flex;align-items:center;justify-content:flex-end;gap:4px;color:var(--ink3);font-size:8px;margin-top:8px}.cal-legend i{width:9px;height:9px;border-radius:3px;background:rgba(91,143,212,.07)}.cal-legend i:nth-of-type(2){background:rgba(91,143,212,.23)}.cal-legend i:nth-of-type(3){background:rgba(91,143,212,.43)}.cal-legend i:nth-of-type(4){background:rgba(91,143,212,.65)}.cal-legend i:nth-of-type(5){background:rgba(66,122,190,.9)}
-.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.stat{padding:16px}.stat b{display:block;font-size:25px;font-weight:500}.stat small{color:var(--ink3)}.section-title{font-size:12px;font-weight:550;margin:0 0 12px}
-.search{width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,.75);border-radius:14px;padding:11px 14px;background:rgba(255,255,255,.68);color:var(--ink);outline:0}.cats{display:grid;gap:8px;margin-top:9px}.cat{display:flex;align-items:center;gap:12px;padding:13px 14px;text-decoration:none;color:inherit}.cat-icon{width:34px;height:34px;border-radius:11px;background:rgba(91,143,212,.12);display:flex;align-items:center;justify-content:center;color:var(--accent)}.cat-icon svg{width:17px}.cat-info{flex:1}.cat-info b{display:block;font-size:13px}.cat-info small{color:var(--ink3)}.count{font-size:11px;color:var(--ink3)}
-.results{display:grid;gap:8px;margin-top:9px}.memory-card{padding:13px}.memory-card b{font-size:12px}.memory-card p{font-size:12px;line-height:1.65;margin:5px 0;color:var(--ink2)}.memory-card small{color:var(--ink3)}
-.galaxy{padding:18px;text-align:center;min-height:280px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0a0d18;color:#dce8ff}.stars{width:170px;height:170px;border-radius:50%;background:radial-gradient(circle at 50% 50%,#fff 0 1px,transparent 2px),radial-gradient(circle at 30% 60%,#90b8ff 0 1px,transparent 2px),radial-gradient(ellipse,#334884 0,#12172c 35%,#080a12 72%);box-shadow:0 0 45px #5875c066}.galaxy a{margin-top:18px;color:#dce8ff;text-decoration:none;border:1px solid #60719b;border-radius:99px;padding:8px 15px;font-size:11px}
-.lifeline{padding:17px}.lifeline pre{white-space:pre-wrap;font:12px/1.8 inherit;color:var(--ink2);margin:0}.empty{color:var(--ink3);font-size:11px;text-align:center;padding:24px}
-@media(max-width:560px){.month-heatmaps{gap:7px}.month-grid{grid-template-rows:repeat(7,8px);grid-auto-columns:8px;gap:2px}.memory-cell{width:8px;height:8px}}
-</style></head><body><main class="wrap">
-<header class="head"><div><small>OUR MEMORY</small><h1 class="english-page-title">Memory</h1></div><small id="generated">记忆系统</small></header>
-<nav class="tabs"><button class="on" data-tab="dashboard">仪表盘</button><button data-tab="library">记忆库</button><button data-tab="galaxy">星图</button><button data-tab="lifeline">生活线</button></nav>
-<section class="view on" id="dashboard">
- <article class="memory-calendar glass">
-  <div class="heat-head"><b>记忆沉淀</b><small id="memoryDaySummary">今天记录了 0 条记忆</small></div>
-  <div class="month-heatmaps" id="memoryHeatmaps"></div>
-  <div class="cal-legend"><span>少</span><i></i><i></i><i></i><i></i><i></i><span>多</span></div>
- </article>
- <div class="stats"><article class="stat glass"><b id="total">—</b><small>记忆总数</small></article><article class="stat glass"><b id="monthCount">—</b><small>本月新增</small></article><article class="stat glass"><b id="catCount">—</b><small>现有分类</small></article><article class="stat glass"><b id="whyCount">—</b><small>写明记录原因</small></article></div>
-</section>
-<section class="view" id="library"><input class="search" id="search" placeholder="搜索内容、标题或标签"><div class="cats" id="cats"></div><div class="results" id="results"></div></section>
-<section class="view" id="galaxy"><article class="galaxy glass"><div class="stars"></div><h3>记忆银河</h3><small>查看记忆之间的关联与主题聚类</small><a href="/brain.html">进入可交互星图</a></article></section>
-<section class="view" id="lifeline"><article class="lifeline glass"><h3 class="section-title">生活线</h3><pre id="life">正在读取长期生活轨迹…</pre></article></section>
-</main><script>
-let memoryData={categories:[],memories:{}}, all=[],selectedMemoryDay='';
-const esc=HomeCommon.escapeHtml;
-const localDay=d=>{const x=new Date(d.getTime()-d.getTimezoneOffset()*60000);return x.toISOString().slice(0,10)};
-document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('.view').forEach(x=>x.classList.toggle('on',x.id===b.dataset.tab));});
-function memoryDayCounts(){const counts={};all.forEach(x=>{const k=String(x.created||'').slice(0,10);if(k)counts[k]=(counts[k]||0)+1});return counts}
-function renderMemoryHeatmap(){
- const counts=memoryDayCounts(),today=localDay(new Date());if(!selectedMemoryDay)selectedMemoryDay=today;
- const months=Array.from({length:5},(_,i)=>{const d=new Date();return new Date(d.getFullYear(),d.getMonth()-4+i,1)});
- memoryHeatmaps.innerHTML=months.map(first=>{const y=first.getFullYear(),m=first.getMonth(),days=new Date(y,m+1,0).getDate(),cells=[];
-  for(let i=0;i<first.getDay();i++)cells.push('<i class="memory-cell blank"></i>');
-  for(let day=1;day<=days;day++){const d=new Date(y,m,day),key=localDay(d),n=counts[key]||0,level=n>=8?'l4':n>=5?'l3':n>=3?'l2':n?'l1':'';
-   cells.push(`<button class="memory-cell ${level}${key===today?' today':''}${key===selectedMemoryDay?' selected':''}" onclick="selectMemoryDay('${key}')" title="${key} · ${n} 条"></button>`);
-  }
-  return `<div class="month-block"><span>${m+1}月</span><div class="month-grid">${cells.join('')}</div></div>`;
- }).join('');
- const n=counts[selectedMemoryDay]||0;memoryDaySummary.textContent=`${selectedMemoryDay===today?'今天':new Date(selectedMemoryDay+'T12:00:00').toLocaleDateString('zh-CN',{month:'long',day:'numeric'})}记录了 ${n} 条记忆`;
-}
-window.selectMemoryDay=key=>{selectedMemoryDay=key;renderMemoryHeatmap()};
-function renderData(){
- all=Object.values(memoryData.memories||{}).flat();total.textContent=all.length;catCount.textContent=(memoryData.categories||[]).length;
- const mk=new Date().toISOString().slice(0,7);monthCount.textContent=all.filter(x=>String(x.created||'').startsWith(mk)).length;whyCount.textContent=all.filter(x=>x.why_remembered).length;
- cats.innerHTML=`<a class="cat glass" href="/travel-memory.html"><span class="cat-icon"><i data-lucide="map-pinned"></i></span><span class="cat-info"><b>云旅游</b><small>永久保存的国家、城市与 AI 专题页</small></span><span class="count">专题</span></a>`+(memoryData.categories||[]).map(c=>`<a class="cat glass" href="/memory-cat.html?cat=${encodeURIComponent(c.id)}"><span class="cat-icon"><i data-lucide="${c.icon||'folder'}"></i></span><span class="cat-info"><b>${esc(c.name)}</b><small>${esc(c.desc||'数据库中的现有分类')}</small></span><span class="count">${(memoryData.memories[c.id]||[]).length}</span></a>`).join('');
- renderMemoryHeatmap();
- if(window.lucide)lucide.createIcons();
-}
-function showResults(list){results.innerHTML=list.slice(0,50).map(m=>`<article class="memory-card glass"><b>${esc(m.title||m.category||'一条记忆')}</b><p>${esc(m.preview||m.content||'')}</p><small>${esc(m.created||'')}${m.why_remembered?' · 已写记录原因':''}</small></article>`).join('')||'<div class="empty">没有找到</div>'}
-search.oninput=()=>{const q=search.value.trim().toLowerCase();cats.style.display=q?'none':'';showResults(q?all.filter(m=>JSON.stringify(m).toLowerCase().includes(q)):[])};
-Promise.all([fetch('/api/memory').then(r=>r.json()),fetch('/brain-data.json?t='+Date.now()).then(r=>r.json()).catch(()=>({}))]).then(([m,b])=>{memoryData=m;renderData();life.textContent=b.lifeline||'生活线还没有内容';if(b.generated)generated.textContent='更新于 '+new Date(b.generated*1000).toLocaleDateString('zh-CN')}).catch(()=>{cats.innerHTML='<div class="empty">记忆接口暂时没醒</div>'});
-window.addEventListener('DOMContentLoaded',()=>{renderCoreNav('memory');renderMemoryHeatmap();if(window.lucide)lucide.createIcons();});
-</script></body></html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+  <title>Memory</title>
+  <link rel="icon" href="/static/favicon-32.png">
+  <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <link rel="stylesheet" href="/static/common.css?v=20">
+  <link rel="stylesheet" href="/static/core-nav.css?v=14">
+  <link rel="stylesheet" href="/static/memory-home.css?v=2">
+  <script src="/static/common.js?v=2"></script>
+  <script src="/static/core-nav.js?v=4"></script>
+  <script src="/static/theme.js?v=40"></script>
+</head>
+<body>
+<main class="memory-shell">
+  <header class="memory-head">
+    <div><small>our memory</small><h1 class="english-page-title">Memory</h1></div>
+    <span id="generated">记忆系统</span>
+  </header>
+
+  <nav class="memory-tabs" aria-label="记忆页面">
+    <button class="on" data-tab="bubbles"><i data-lucide="orbit"></i><span>记忆星图</span></button>
+    <button data-tab="library"><i data-lucide="archive"></i><span>记忆库</span></button>
+    <button data-tab="river"><i data-lucide="waves"></i><span>时间河流</span></button>
+    <button data-tab="decay"><i data-lucide="sparkles"></i><span>记忆衰减</span></button>
+  </nav>
+
+  <section class="memory-view on" id="bubbles">
+    <article class="heat-card glass">
+      <div class="heat-copy"><b>记忆沉淀</b><small id="heatSummary">最近 12 周</small></div>
+      <div class="compact-heat" id="compactHeat"></div>
+      <div class="heat-legend"><span>少</span><i></i><i></i><i></i><i></i><span>多</span></div>
+    </article>
+    <article class="bubble-card glass">
+      <div class="section-head">
+        <div><b>记忆星图</b><small>每颗记忆星按重要程度、情绪和主题聚在一起</small></div>
+        <span id="bubbleCount">0 条</span>
+      </div>
+      <div class="bubble-stage" id="bubbleStage">
+        <svg id="relationLines" aria-hidden="true"></svg>
+        <div class="empty">正在唤醒记忆……</div>
+      </div>
+      <p class="bubble-hint">点一颗记忆星，查看它与附近记忆的关系</p>
+    </article>
+  </section>
+
+  <section class="memory-view" id="library">
+    <div class="library-tools">
+      <label class="search-box"><i data-lucide="search"></i><input id="search" placeholder="搜索标题、内容、标签或记录原因"></label>
+      <a class="manage-link" href="/memory-archive.html"><i data-lucide="settings-2"></i><span>管理归档</span></a>
+    </div>
+    <div class="filter-row" id="filters"></div>
+    <div class="library-results" id="results"></div>
+  </section>
+
+  <section class="memory-view" id="river">
+    <article class="river-card glass">
+      <div class="section-head">
+        <div><b>时间河流</b><small>按发生时间，查看记忆如何一路沉淀下来</small></div>
+        <span id="riverCount">0 个节点</span>
+      </div>
+      <div class="river" id="timeRiver"><div class="empty">正在整理时间……</div></div>
+    </article>
+  </section>
+
+  <section class="memory-view" id="decay">
+    <article class="decay-overview glass">
+      <div class="section-head">
+        <div><b>记忆衰减状态</b><small>观察哪些记忆仍然鲜活，哪些正在休眠</small></div>
+        <span>只展示，不自动删除</span>
+      </div>
+      <div class="decay-summary" id="decaySummary"></div>
+    </article>
+    <div class="decay-list" id="decayList"><div class="empty">正在计算记忆强度……</div></div>
+  </section>
+</main>
+
+<div class="drawer-mask" id="drawerMask"></div>
+<aside class="memory-drawer" id="memoryDrawer" aria-hidden="true">
+  <button class="drawer-close" id="drawerClose" aria-label="关闭"><i data-lucide="x"></i></button>
+  <div class="drawer-kicker" id="drawerKicker">memory detail</div>
+  <h2 id="drawerTitle">一条记忆</h2>
+  <div class="drawer-meta" id="drawerMeta"></div>
+  <div class="drawer-content" id="drawerContent"></div>
+  <section class="drawer-reason"><small>为什么记住</small><p id="drawerReason">还没有写下原因</p></section>
+  <section class="fact-evolution" id="factEvolution" hidden>
+    <small>事实演化</small><div id="factVersions"></div>
+  </section>
+  <div class="drawer-tags" id="drawerTags"></div>
+  <div class="drawer-actions">
+    <a id="drawerCategory" href="/memory-archive.html"><i data-lucide="folder-cog"></i>分类管理</a>
+    <a href="/memory-archive.html"><i data-lucide="archive"></i>归档管理</a>
+  </div>
+</aside>
+
+<script src="/static/memory-home.js?v=2"></script>
+</body>
+</html>

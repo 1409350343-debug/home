@@ -9,6 +9,12 @@ from urllib.parse import urlparse, parse_qs
 
 from memory_config import LMC5_DB, MEMORY_API_TOKEN
 from memory_schema import ensure_memory_schema, memory_snapshot, record_history
+from memory_steward import (
+    public_config as steward_public_config,
+    public_status as steward_public_status,
+    run_once as steward_run_once,
+    save_config as steward_save_config,
+)
 
 
 UNCATEGORIZED = "uncategorized"
@@ -76,6 +82,15 @@ def serialize_memory(row):
         "why_remembered": (
             row["why_remembered"] if "why_remembered" in keys else ""
         ) or "",
+        "fact_key": row["fact_key"] if "fact_key" in keys else "",
+        "fact_value": row["fact_value"] if "fact_value" in keys else "",
+        "valid_from": row["valid_from"] if "valid_from" in keys else None,
+        "valid_to": row["valid_to"] if "valid_to" in keys else None,
+        "is_current_fact": bool(row["is_current_fact"]) if "is_current_fact" in keys else False,
+        "supersedes_id": row["supersedes_id"] if "supersedes_id" in keys else None,
+        "source_message_id": row["source_message_id"] if "source_message_id" in keys else "",
+        "change_reason": row["change_reason"] if "change_reason" in keys else "",
+        "review_status": row["review_status"] if "review_status" in keys else "",
     }
 
 
@@ -203,6 +218,48 @@ def get_memory_history(memory_id):
     return [dict(row) for row in rows]
 
 
+def get_facts(fact_key=""):
+    """返回事实当前值及历史版本；供页面和外接 AI 做确定性检索。"""
+    with connect_db() as conn:
+        params = []
+        where = "WHERE fact_key <> ''"
+        if fact_key:
+            where += " AND fact_key=?"
+            params.append(fact_key)
+        rows = conn.execute(
+            f"""SELECT * FROM memories {where}
+                ORDER BY fact_key,
+                         is_current_fact DESC,
+                         COALESCE(valid_from, created_at) DESC,
+                         id DESC""",
+            params,
+        ).fetchall()
+
+    groups = {}
+    for row in rows:
+        item = serialize_memory(row)
+        groups.setdefault(item["fact_key"], []).append(item)
+    return [
+        {
+            "fact_key": key,
+            "current": next(
+                (
+                    item for item in versions
+                    if item["is_current_fact"]
+                    and item["review_status"] == "confirmed"
+                ),
+                None,
+            ),
+            "pending": [
+                item for item in versions
+                if item["review_status"] in ("pending", "conflict")
+            ],
+            "versions": versions,
+        }
+        for key, versions in groups.items()
+    ]
+
+
 class MemoryHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
@@ -223,9 +280,16 @@ class MemoryHandler(BaseHTTPRequestHandler):
             elif parsed.path == "/api/memory/history":
                 memory_id = int(parse_qs(parsed.query).get("id", [""])[0])
                 self._json_response({"history": get_memory_history(memory_id)})
+            elif parsed.path == "/api/memory/facts":
+                fact_key = parse_qs(parsed.query).get("key", [""])[0].strip()
+                self._json_response({"facts": get_facts(fact_key)})
+            elif parsed.path == "/api/memory/steward/config":
+                self._json_response(steward_public_config())
+            elif parsed.path == "/api/memory/steward/status":
+                self._json_response(steward_public_status())
             else:
                 self._json_response({"error": "not found"}, 404)
-        except (FileNotFoundError, sqlite3.Error) as exc:
+        except (FileNotFoundError, sqlite3.Error, RuntimeError) as exc:
             self._json_response({"error": str(exc)}, 503)
 
     def do_POST(self):
@@ -234,6 +298,12 @@ class MemoryHandler(BaseHTTPRequestHandler):
                 self._json_response({"error": "unauthorized"}, 401)
                 return
             body = self._read_json()
+            if self.path == "/api/memory/steward/config":
+                self._json_response(steward_save_config(body))
+                return
+            if self.path == "/api/memory/steward/run":
+                self._json_response(steward_run_once(force=True))
+                return
             memory_id = int(body.get("id"))
             if self.path == "/api/memory/categorize":
                 category = str(body.get("category") or "").strip()
@@ -252,7 +322,7 @@ class MemoryHandler(BaseHTTPRequestHandler):
             self._json_response({"ok": ok}, 200 if ok else 404)
         except (TypeError, ValueError, json.JSONDecodeError):
             self._json_response({"error": "invalid request body"}, 400)
-        except (FileNotFoundError, sqlite3.Error) as exc:
+        except (FileNotFoundError, sqlite3.Error, RuntimeError) as exc:
             self._json_response({"error": str(exc)}, 503)
 
     def _read_json(self):

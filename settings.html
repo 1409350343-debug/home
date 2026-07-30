@@ -21,7 +21,7 @@
   }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #c9d6e2 linear-gradient(rgba(60,85,115,0.18), rgba(60,85,115,0.08)) , #c9d6e2 url('/static/bg-butterfly.jpg') center/cover fixed;
+    background: #f8f1df url('/static/summer-green-background.png') center bottom/cover fixed;
     background-blend-mode: multiply, normal;
     min-height: 100vh;
     color: var(--cc-ink);
@@ -66,7 +66,8 @@
   .acc.open .a-body { display: block; }
 
   .a-body .hint { font-size: 11px; color: var(--cc-ink3); line-height: 1.8; padding-top: 9px; }
-  .a-body input[type=text], .a-body textarea {
+  .a-body input[type=text], .a-body input[type=password],
+  .a-body input[type=number], .a-body textarea {
     width: 100%; border: 1px solid rgba(140,165,200,0.4);
     border-radius: 10px; background: rgba(255,255,255,0.65);
     color: var(--cc-ink); font-size: 13px; padding: 9px 11px;
@@ -106,9 +107,23 @@
     border-radius:6px;background:#88ad73 }
   .theme-current b { display:block;font-size:13px;font-weight:600 }
   .theme-current small { display:block;margin-top:3px;color:var(--cc-ink3);font-size:10.5px }
+  .avatar-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+  .avatar-editor{display:flex;flex-direction:column;align-items:center;gap:7px;padding:13px 8px;border-radius:14px;background:rgba(232,239,219,.64);border:1px solid rgba(121,151,100,.22)}
+  .avatar-preview{width:68px;height:68px;border-radius:50%;object-fit:cover;background:#f3f5e9;border:3px solid rgba(255,255,255,.82);box-shadow:0 4px 12px rgba(80,110,68,.14)}
+  .avatar-emoji{display:flex;align-items:center;justify-content:center;font-size:34px}
+  .avatar-name{font-size:13px;font-weight:700;color:var(--cc-ink)}
+  .avatar-actions{display:flex;gap:6px}
+  .avatar-upload,.avatar-reset{border:0;border-radius:9px;padding:7px 10px;font:inherit;font-size:11px;cursor:pointer}
+  .avatar-upload{background:#88ad73;color:#fff}
+  .avatar-reset{background:rgba(255,255,255,.65);color:#6f856f}
+  .avatar-file{display:none}
+  .steward-status{margin-top:10px;padding:10px 12px;border-radius:12px;
+    background:rgba(232,239,219,.72);color:#5f7958;font-size:11px;line-height:1.7}
+  .steward-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .steward-actions .secondary{background:rgba(232,239,219,.9);color:#557451}
 
 </style>
-<script src="/static/theme.js?v=40"></script>
+<script src="/static/theme.js?v=42"></script>
 </head>
 <body>
 
@@ -178,6 +193,37 @@
   </div>
 </div>
 
+<!-- Gemini 记忆管家 -->
+<div class="acc glassy" id="acc-memory-steward">
+  <div class="a-head" onclick="toggleAcc('acc-memory-steward')">
+    <div class="a-icon"><i data-lucide="sparkles"></i></div>
+    <div class="a-title"><b>Gemini 记忆管家</b><small id="steward-sub">检查配置中…</small></div>
+    <span class="chev">▶</span>
+  </div>
+  <div class="a-body">
+    <div class="hint">自动从小窝与 TG 共用的聊天流水中筛选长期记忆，并每天整理一次超过 7 天的详细流水。只有出现新对话时才会批量请求 Gemini，不会每分钟消耗 Token。</div>
+    <input type="password" id="steward-key" autocomplete="off" placeholder="Gemini API key">
+    <div class="row-flex">
+      <span>启用记忆管家<small>总开关，关闭后不请求 Gemini</small></span>
+      <input type="checkbox" id="steward-enabled" style="width:20px;height:20px;accent-color:#88ad73">
+    </div>
+    <div class="row-flex">
+      <span>自动记录<small>至少凑够 6 条新消息再一起分析</small></span>
+      <input type="checkbox" id="steward-capture" style="width:20px;height:20px;accent-color:#88ad73">
+    </div>
+    <div class="row-flex">
+      <span>7 日整理<small>每天一次；只做可恢复归档，不删除</small></span>
+      <input type="checkbox" id="steward-review" style="width:20px;height:20px;accent-color:#88ad73">
+    </div>
+    <div class="steward-actions">
+      <button class="save-btn" onclick="saveMemorySteward()">保存设置</button>
+      <button class="save-btn secondary" onclick="runMemorySteward()">现在整理一次</button>
+    </div>
+    <div class="steward-status" id="steward-status">尚未运行</div>
+    <div class="ok-tip" id="steward-ok">已保存</div>
+  </div>
+</div>
+
 <div class="sec-label">Appearance</div>
 
 <!-- 主题 -->
@@ -195,6 +241,40 @@
   </div>
 </div>
 
+<!-- 头像 -->
+<div class="acc glassy" id="acc-avatar">
+  <div class="a-head" onclick="toggleAcc('acc-avatar')">
+    <div class="a-icon"><i data-lucide="images"></i></div>
+    <div class="a-title"><b>更换头像</b><small>上传小羊和福福的头像</small></div>
+    <span class="chev">▶</span>
+  </div>
+  <div class="a-body">
+    <div class="hint">图片会自动居中裁成正方形并同步到服务器，所有设备刷新后都能看到。</div>
+    <div class="avatar-grid">
+      <div class="avatar-editor">
+        <div class="avatar-preview avatar-emoji" id="avatar-xiaoyang-preview" data-avatar-owner="xiaoyang">🐑</div>
+        <div class="avatar-name">小羊</div>
+        <div class="avatar-actions">
+          <label class="avatar-upload" for="avatar-xiaoyang-input">上传</label>
+          <button class="avatar-reset" type="button" onclick="resetAvatar('xiaoyang')">恢复</button>
+        </div>
+        <input class="avatar-file" id="avatar-xiaoyang-input" type="file" accept="image/*" onchange="uploadAvatar('xiaoyang',this)">
+      </div>
+      <div class="avatar-editor">
+        <img class="avatar-preview" id="avatar-fufu-preview" data-avatar-owner="fufu" src="/static/img/fufu/portrait.jpg?v=4" alt="福福">
+        <div class="avatar-name">福福</div>
+        <div class="avatar-actions">
+          <label class="avatar-upload" for="avatar-fufu-input">上传</label>
+          <button class="avatar-reset" type="button" onclick="resetAvatar('fufu')">恢复</button>
+        </div>
+        <input class="avatar-file" id="avatar-fufu-input" type="file" accept="image/*" onchange="uploadAvatar('fufu',this)">
+      </div>
+    </div>
+    <div class="ok-tip" id="avatar-ok">头像已经换好了</div>
+  </div>
+</div>
+
+<script src="/static/profile.js?v=1"></script>
 <script>
   window.toggleAcc = id => document.getElementById(id).classList.toggle('open');
 
@@ -254,9 +334,60 @@
       .then(()=>{ document.getElementById('sb-key').value=''; const el = document.getElementById('sb-ok'); el.style.display='block'; setTimeout(()=>el.style.display='none', 2500); })
       .catch(()=>alert('没存上'));
   };
+  window.uploadAvatar=async function(owner,input){
+    try{
+      await HomeProfile.save(owner,input.files[0]);
+      const tip=document.getElementById('avatar-ok');
+      tip.style.display='block';setTimeout(()=>tip.style.display='none',2200);
+    }catch(e){alert(e.message||'头像没有换成功')}
+    input.value='';
+  };
+  window.resetAvatar=async function(owner){
+    try{await HomeProfile.clear(owner)}
+    catch(e){alert(e.message||'默认头像恢复失败')}
+  };
+
+  // ===== Gemini 记忆管家 =====
+  function loadMemorySteward(){
+    Promise.all([
+      fetch('/api/memory/steward/config?t='+Date.now()).then(r=>r.json()),
+      fetch('/api/memory/steward/status?t='+Date.now()).then(r=>r.json())
+    ]).then(([c,s])=>{
+      document.getElementById('steward-enabled').checked=!!c.enabled;
+      document.getElementById('steward-capture').checked=c.auto_capture!==false;
+      document.getElementById('steward-review').checked=c.daily_review!==false;
+      if(c.key_masked)document.getElementById('steward-key').placeholder='已保存：'+c.key_masked+'（输入新值可替换）';
+      document.getElementById('steward-sub').textContent=c.enabled?'Gemini 2.5 Flash 正在值班':(c.configured?'已配置，尚未启用':'需要填写 API key');
+      document.getElementById('steward-status').textContent=[
+        s.last_result||'尚未运行',
+        s.pending_messages?`待处理 ${s.pending_messages} 条新消息`:'',
+        s.last_run_at?`上次运行 ${s.last_run_at}`:'',
+        s.last_error?`错误：${s.last_error}`:''
+      ].filter(Boolean).join(' · ');
+    }).catch(()=>{document.getElementById('steward-sub').textContent='记忆 API 没醒'});
+  }
+  window.saveMemorySteward=function(){
+    const key=document.getElementById('steward-key').value.trim();
+    const body={
+      enabled:document.getElementById('steward-enabled').checked,
+      auto_capture:document.getElementById('steward-capture').checked,
+      daily_review:document.getElementById('steward-review').checked
+    };
+    if(key)body.api_key=key;
+    fetch('/api/memory/steward/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+      .then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||'保存失败');return d})
+      .then(()=>{document.getElementById('steward-key').value='';const e=document.getElementById('steward-ok');e.style.display='block';setTimeout(()=>e.style.display='none',2200);loadMemorySteward()})
+      .catch(e=>alert(e.message));
+  };
+  window.runMemorySteward=function(){
+    const box=document.getElementById('steward-status');box.textContent='Gemini 正在筛选与整理…';
+    fetch('/api/memory/steward/run',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})
+      .then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||'运行失败');return d})
+      .then(()=>loadMemorySteward()).catch(e=>{box.textContent='运行失败：'+e.message});
+  };
 
   window.addEventListener('DOMContentLoaded', ()=>{
-    renderCoreNav('settings'); loadModels();
+    renderCoreNav('settings'); loadModels(); loadMemorySteward();
     if (typeof lucide !== 'undefined') lucide.createIcons();
   });
   window.addEventListener('load', ()=>{ if (typeof lucide !== 'undefined') lucide.createIcons(); });

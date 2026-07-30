@@ -40,9 +40,10 @@
       `--accent-soft:${s.soft}!important;--soft:${s.soft}!important;`+
       `--line:${s.line}!important;--border:${s.line}!important;}`+
       `body,button,input,textarea,select{font-family:"AaCheeseCJK","Oleo Script",-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif!important;}`+
-      `body{background:radial-gradient(circle at 8% 5%,rgba(245,188,199,.20),transparent 24%),`+
-      `radial-gradient(circle at 94% 10%,rgba(150,209,227,.18),transparent 26%),`+
-      `linear-gradient(145deg,#fffbed 0%,${s.bg} 50%,${s.card2} 100%) fixed!important;}`;
+      `body{background-color:#f8f1df!important;`+
+      `background-image:url("/static/summer-green-background.png")!important;`+
+      `background-position:center bottom!important;background-size:cover!important;`+
+      `background-repeat:no-repeat!important;background-attachment:fixed!important;}`;
     let el=document.getElementById('home-theme-style');
     if(!el){
       el=document.createElement('style');

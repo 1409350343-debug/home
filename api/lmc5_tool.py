@@ -13,9 +13,11 @@ Usage:
 
 import argparse
 import difflib
+import inspect
 import json
 import re
 import sys
+from datetime import datetime, timezone
 
 from memory_config import LMC5_DB, LMC5_SRC
 from memory_schema import ensure_memory_schema, record_history
@@ -47,6 +49,30 @@ def _jieba_cut(text: str) -> list[str]:
 
 def _normalized(text: str) -> str:
     return re.sub(r'\s+', '', (text or '')).lower()
+
+
+def _fact_key(value: str) -> str:
+    key = (value or "").strip().lower()
+    if not re.fullmatch(r"[a-z0-9][a-z0-9_.-]{2,127}", key):
+        raise SystemExit(
+            "fact_key 只能使用小写字母、数字、点、横线和下划线，"
+            "例如 assistant.name"
+        )
+    return key
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _add_memory_compat(store, **kwargs):
+    """兼容不同 LMC-5 版本：支持 fact_key 时直接传入，否则稍后回填。"""
+    signature = inspect.signature(store.add_memory)
+    accepted = {
+        key: value for key, value in kwargs.items()
+        if key in signature.parameters
+    }
+    return store.add_memory(**accepted)
 
 
 def find_similar(conn, title, content, threshold=0.9):
@@ -129,7 +155,8 @@ def cmd_add(args):
         store.close()
         return
 
-    record, is_new = store.add_memory(
+    record, is_new = _add_memory_compat(
+        store,
         title=args.title,
         content=args.content,
         thread=args.thread or "note",
@@ -137,6 +164,7 @@ def cmd_add(args):
         tags=tags,
         valence=valence,
         source=args.source or "conversation",
+        fact_key=_fact_key(args.fact_key) if args.fact_key else "",
     )
     if record.id is not None:
         existing_why = store.conn.execute(
@@ -147,6 +175,11 @@ def cmd_add(args):
             store.conn.execute(
                 "UPDATE memories SET why_remembered=? WHERE id=?",
                 (args.why.strip(), record.id),
+            )
+        if args.fact_key:
+            store.conn.execute(
+                "UPDATE memories SET fact_key=? WHERE id=?",
+                (_fact_key(args.fact_key), record.id),
             )
         if is_new:
             record_history(
@@ -180,6 +213,171 @@ def cmd_add(args):
         print(f"Added memory id={record.id}: {args.title}")
     else:
         print(f"Memory already exists id={record.id}: {args.title}")
+    store.close()
+
+
+def _current_fact(conn, key):
+    return conn.execute(
+        """SELECT * FROM memories
+           WHERE fact_key=? AND is_current_fact=1
+             AND review_status='confirmed' AND status='current'
+           ORDER BY COALESCE(valid_from, created_at) DESC, id DESC
+           LIMIT 1""",
+        (key,),
+    ).fetchone()
+
+
+def _fact_versions(conn, key):
+    return conn.execute(
+        """SELECT id, fact_key, fact_value, title, valid_from, valid_to,
+                  is_current_fact, supersedes_id, confidence, review_status,
+                  change_reason, why_remembered, source_message_id
+           FROM memories WHERE fact_key=?
+           ORDER BY COALESCE(valid_from, created_at) DESC, id DESC""",
+        (key,),
+    ).fetchall()
+
+
+def cmd_fact_set(args):
+    """写入事实版本。confirmed 会结束旧版本；pending/conflict 不覆盖当前值。"""
+    key = _fact_key(args.key)
+    value = args.value.strip()
+    if not value:
+        raise SystemExit("事实值不能为空")
+    if not args.why.strip():
+        raise SystemExit("--why 不能为空")
+
+    store = MemoryStore(DB_PATH)
+    ensure_memory_schema(store.conn)
+    current = _current_fact(store.conn, key)
+    status = args.review_status
+
+    if current and _normalized(current["fact_value"]) == _normalized(value):
+        store.conn.execute(
+            """UPDATE memories
+               SET hit_count=COALESCE(hit_count, 0)+1,
+                   last_hit_at=?,
+                   confidence=MAX(COALESCE(confidence, 0), ?),
+                   source_message_id=CASE WHEN ?<>'' THEN ? ELSE source_message_id END,
+                   change_reason=CASE WHEN ?<>'' THEN ? ELSE change_reason END
+               WHERE id=?""",
+            (
+                _now(), args.confidence,
+                args.source_message_id, args.source_message_id,
+                args.change_reason, args.change_reason,
+                current["id"],
+            ),
+        )
+        record_history(
+            store.conn,
+            current["id"],
+            "fact_reconfirmed",
+            args.change_reason or args.why,
+        )
+        store.conn.commit()
+        print(f"Fact unchanged, reconfirmed id={current['id']}: {key}={value}")
+        store.close()
+        return
+
+    title = args.title.strip() or key
+    content = args.content.strip() or f"{title}：{value}"
+    tags = [item.strip() for item in args.tags.split(",") if item.strip()]
+    record, is_new = _add_memory_compat(
+        store,
+        title=title,
+        content=content,
+        thread=args.thread,
+        category=args.category,
+        tags=tags,
+        valence=None,
+        source=args.source,
+        fact_key=key,
+    )
+    if record.id is None:
+        raise SystemExit("LMC-5 没有返回新记忆 id")
+
+    valid_from = args.valid_from or _now()
+    supersedes_id = current["id"] if current and status == "confirmed" else None
+    if current and status == "confirmed":
+        before = dict(current)
+        store.conn.execute(
+            """UPDATE memories
+               SET is_current_fact=0, valid_to=?, updated_at=CURRENT_TIMESTAMP
+               WHERE id=?""",
+            (valid_from, current["id"]),
+        )
+        record_history(
+            store.conn,
+            current["id"],
+            "fact_superseded",
+            args.change_reason or f"replaced by {value}",
+            snapshot=before,
+        )
+
+    store.conn.execute(
+        """UPDATE memories
+           SET fact_key=?, fact_value=?, valid_from=?, valid_to=NULL,
+               is_current_fact=?, supersedes_id=?, confidence=?,
+               source_message_id=?, change_reason=?, review_status=?,
+               why_remembered=?, updated_at=CURRENT_TIMESTAMP
+           WHERE id=?""",
+        (
+            key, value, valid_from,
+            1 if status == "confirmed" else 0,
+            supersedes_id, args.confidence,
+            args.source_message_id, args.change_reason, status,
+            args.why.strip(), record.id,
+        ),
+    )
+    record_history(
+        store.conn,
+        record.id,
+        "fact_created" if current is None else (
+            "fact_version_created" if status == "confirmed" else "fact_conflict_created"
+        ),
+        args.change_reason or args.why,
+    )
+    store.conn.commit()
+    print(
+        f"Fact {status} id={record.id}: {key}={value}"
+        + (f" (supersedes {supersedes_id})" if supersedes_id else "")
+    )
+    store.close()
+
+
+def cmd_fact_get(args):
+    key = _fact_key(args.key)
+    store = MemoryStore(DB_PATH)
+    ensure_memory_schema(store.conn)
+    rows = _fact_versions(store.conn, key)
+    if not rows:
+        print(f"No fact found: {key}")
+        store.close()
+        return
+    selected = rows if args.history else [
+        row for row in rows
+        if row["is_current_fact"] or row["review_status"] in ("pending", "conflict")
+    ]
+    print(json.dumps([dict(row) for row in selected], ensure_ascii=False, indent=2))
+    store.close()
+
+
+def cmd_fact_list(args):
+    store = MemoryStore(DB_PATH)
+    ensure_memory_schema(store.conn)
+    where = "fact_key<>''"
+    params = []
+    if args.review_status:
+        where += " AND review_status=?"
+        params.append(args.review_status)
+    rows = store.conn.execute(
+        f"""SELECT id, fact_key, fact_value, is_current_fact, review_status,
+                   valid_from, valid_to, confidence
+            FROM memories WHERE {where}
+            ORDER BY fact_key, is_current_fact DESC, id DESC""",
+        params,
+    ).fetchall()
+    print(json.dumps([dict(row) for row in rows], ensure_ascii=False, indent=2))
     store.close()
 
 
@@ -410,6 +608,7 @@ def main():
     p_add.add_argument("--tags", default="")
     p_add.add_argument("--valence", default=None)
     p_add.add_argument("--source", default="conversation")
+    p_add.add_argument("--fact-key", default="")
     p_add.add_argument(
         "--why",
         required=True,
@@ -422,6 +621,37 @@ def main():
     p_relate.add_argument("relation_type")
     p_relate.add_argument("--strength", type=float, default=0.8)
     p_relate.add_argument("--reason", default="")
+
+    p_fact_set = sub.add_parser("fact-set")
+    p_fact_set.add_argument("key")
+    p_fact_set.add_argument("value")
+    p_fact_set.add_argument("--title", default="")
+    p_fact_set.add_argument("--content", default="")
+    p_fact_set.add_argument("--thread", default="facts")
+    p_fact_set.add_argument("--category", default="fact")
+    p_fact_set.add_argument("--tags", default="")
+    p_fact_set.add_argument("--source", default="conversation")
+    p_fact_set.add_argument("--source-message-id", default="")
+    p_fact_set.add_argument("--valid-from", default="")
+    p_fact_set.add_argument("--confidence", type=float, default=1.0)
+    p_fact_set.add_argument("--change-reason", default="")
+    p_fact_set.add_argument(
+        "--review-status",
+        choices=("confirmed", "pending", "conflict"),
+        default="confirmed",
+    )
+    p_fact_set.add_argument("--why", required=True)
+
+    p_fact_get = sub.add_parser("fact-get")
+    p_fact_get.add_argument("key")
+    p_fact_get.add_argument("--history", action="store_true")
+
+    p_fact_list = sub.add_parser("fact-list")
+    p_fact_list.add_argument(
+        "--review-status",
+        choices=("confirmed", "pending", "conflict"),
+        default="",
+    )
 
     p_breath = sub.add_parser("breath")
     p_breath.add_argument("--count", type=int, default=3)
@@ -443,6 +673,9 @@ def main():
         "auto-relate": cmd_auto_relate,
         "rebuild-fts": cmd_rebuild_fts,
         "stats": cmd_stats,
+        "fact-set": cmd_fact_set,
+        "fact-get": cmd_fact_get,
+        "fact-list": cmd_fact_list,
     }
     cmds[args.command](args)
 

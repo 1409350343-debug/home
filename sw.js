@@ -1,8 +1,9 @@
-const CACHE_NAME = 'home-v35';
+const CACHE_NAME = 'home-v36-summer-clean';
 const ASSETS = [
   '/',
   '/index.html',
-  '/static/bg.jpg',
+  '/static/summer-green-background.png',
+  '/static/theme.js?v=42',
   '/static/manifest.json',
   'https://unpkg.com/lucide@latest/dist/umd/lucide.min.js'
 ];
@@ -36,10 +37,10 @@ self.addEventListener('fetch', e => {
     return;
   }
   e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request).then(resp => {
+    fetch(e.request).then(resp => {
       const clone = resp.clone();
       caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
       return resp;
-    }))
+    }).catch(() => caches.match(e.request))
   );
 });

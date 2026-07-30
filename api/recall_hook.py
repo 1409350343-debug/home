@@ -46,8 +46,11 @@ LAMBDA_DONE = 0.12      # 已解决的衰减快些，约6天
 
 WRITE_CONTRACT = (
     "【记忆沉淀规则】本轮若出现未来仍有用、且此前未记录的新事实或明确偏好，"
-    "应在事实确认后调用 lmc5_tool.py add 写入；--why 必须写明此刻为什么值得"
-    "长期记住。不要保存一次性闲聊、密码/令牌，或未经明确同意的高度敏感信息。"
+    "应在事实确认后写入。普通经历调用 lmc5_tool.py add；会随时间改变的事实"
+    "调用 lmc5_tool.py fact-set，并使用稳定 fact_key（如 assistant.name）。"
+    "--why 必须写明此刻为什么值得长期记住。若新旧说法可能冲突但用户没有"
+    "明确确认，使用 --review-status conflict，不覆盖当前事实。不要保存一次性"
+    "闲聊、密码/令牌，或未经明确同意的高度敏感信息。"
 )
 
 STOP = set('''的 了 是 在 我 你 他 她 它 们 和 与 也 都 就 还 又 而 但 不 没 有 无 会 能 要 想 说 看 去 来 好 吗 呢 吧 啊 呀 啦 嘛 这 那 什么 怎么 为什么 哪 谁 多少 一个 一下 一点 现在 今天 昨天 明天 时候 因为 所以 如果 可以 应该 已经 正在 自己 我们 你们 他们 user users assistant channel source plugin telegram chat_id message_id image_path user_id ts photo'''.split())

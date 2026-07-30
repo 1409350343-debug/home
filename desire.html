@@ -17,7 +17,7 @@
   :root {
     /* 接全站 HomeTheme：选了主题后 --bg/--ink/--accent 等会被注入覆盖 */
     --bg: #E8F0FE;
-    --bg-img: url('/static/bg.jpg');
+    --bg-img: url('/static/summer-green-background.png');
     --text: var(--ink, #3A4A6B);
     --text-soft: var(--ink2, #5A6A8A);
     --muted: var(--ink3, #9AA8C7);
@@ -323,7 +323,7 @@
 
 <div class="couple-card">
   <div class="person">
-    <img class="avatar" src="/static/avatar-xiaoyang.jpg" alt="小羊">
+    <div class="avatar" data-avatar-owner="xiaoyang" role="img" aria-label="小羊" style="display:flex;align-items:center;justify-content:center;background:#f3f5e9;font-size:28px">🐑</div>
     <div class="name">小羊</div>
     <div class="status-text">· 在刷视频</div>
   </div>
@@ -333,7 +333,7 @@
     <div class="days-since">2026.04.10</div>
   </div>
   <div class="person">
-    <img class="avatar" src="/static/img/fufu/portrait.jpg" alt="福福">
+    <img class="avatar" data-avatar-owner="fufu" src="/static/img/fufu/portrait.jpg?v=4" alt="福福">
     <div class="name">福福</div>
     <div class="status-text" id="fufu-status">· 在线</div>
   </div>
@@ -368,6 +368,7 @@
   <div id="timeline"></div>
 </div>
 
+<script src="/static/profile.js?v=1"></script>
 <script>
 const MODE_NAMES = { normal: '正常 · 稳定', low_energy: '犯困 · 低能量', high_drive: '想你 · 高驱动' };
 const DRIVE_ENG = {

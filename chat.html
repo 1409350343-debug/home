@@ -74,8 +74,8 @@
 <header>
   <a href="/">‹</a>
   <div style="display:flex;flex:none">
-    <img class="ava" src="/static/img/fufu/portrait.jpg?v=2" alt="福福">
-    <img class="ava" src="/static/avatar-xiaoyang.jpg" alt="小羊" style="margin-left:-14px;z-index:-1;position:relative">
+    <img class="ava" data-avatar-owner="fufu" src="/static/img/fufu/portrait.jpg?v=4" alt="福福">
+    <span class="ava" data-avatar-owner="xiaoyang" role="img" aria-label="小羊" style="margin-left:-14px;z-index:-1;position:relative;display:flex;align-items:center;justify-content:center;background:#f3f5e9">🐑</span>
   </div>
   <div class="t"><b>福福 & 小羊</b><small><span class="line-dot" id="line-dot"></span><span id="line-status">正在连接小窝…</span></small></div>
   <a href="/settings.html" id="gear" style="font-size:16px" aria-label="打开设置">⚙️</a>
@@ -88,6 +88,7 @@
   <input type="file" id="file" accept="image/*" hidden>
 </div>
 <script src="/static/theme.js?v=41"></script>
+<script src="/static/profile.js?v=1"></script>
 <script>
 const $=id=>document.getElementById(id);
 let lastTs=0, seen=new Set(), latestHome=[], pollBusy=false, routeStatus=null, lastStatusCheck=0;
@@ -154,8 +155,11 @@ function add(m,localState){
   const el=document.createElement('div');
   el.className='msg '+(me?'me':'fox')+(localState?' pending':'');
   const ctx=ctxLabel(m.book_id);
-  const av=me?`<img class="avm" src="/static/avatar-xiaoyang.jpg" alt="小羊">`
-            :`<img class="avm" src="/static/img/fufu/portrait.jpg?v=2" alt="福福">`;
+  const avatarOwner=me?'xiaoyang':'fufu';
+  const avatarSrc=window.HomeProfile?.get(avatarOwner)||'';
+  const av=avatarSrc
+    ?`<img class="avm" data-avatar-owner="${avatarOwner}" src="${avatarSrc}" alt="${me?'小羊':'福福'}">`
+    :`<span class="avm" data-avatar-owner="${avatarOwner}" style="display:flex;align-items:center;justify-content:center;background:#f3f5e9;font-size:20px">${me?'🐑':'🦊'}</span>`;
   const img=safeImg(m.img);
   const delivery=me?`<span class="delivery">${localState||' · 已存入小窝'}</span>`:'';
   el.innerHTML=`${av}<div class="col"><div class="bub">${img?`<img src="${img}" alt="聊天图片">`:''}${img&&m.text?'<br>':''}${esc(m.text)}</div>

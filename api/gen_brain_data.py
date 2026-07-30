@@ -35,7 +35,9 @@ def load_memories():
     cur.execute(f'''
         SELECT id, title, content, thread, category, tags_json,
                valence, arousal, hit_count, created_at, updated_at,
-               status, why_remembered, {tier_column}
+               status, why_remembered, fact_key, fact_value, valid_from,
+               valid_to, is_current_fact, supersedes_id, change_reason,
+               review_status, {tier_column}
         FROM memories
         ORDER BY id DESC
     ''')
@@ -66,6 +68,14 @@ def load_memories():
             'activation': int(row['hit_count'] or 0),
             'why': row['why_remembered'] or '',
             'content': row['content'] or '',
+            'fact_key': row['fact_key'] or '',
+            'fact_value': row['fact_value'] or '',
+            'valid_from': row['valid_from'] or '',
+            'valid_to': row['valid_to'] or '',
+            'is_current_fact': bool(row['is_current_fact']),
+            'supersedes_id': row['supersedes_id'],
+            'change_reason': row['change_reason'] or '',
+            'review_status': row['review_status'] or '',
         })
     conn.close()
     return buckets

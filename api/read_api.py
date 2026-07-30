@@ -70,9 +70,35 @@ CHARS_PER_PAGE = 800
 CHAT_KEEP = 500
 CHAT_TEXT_LIMIT = 10000
 CHAT_IMAGE_LIMIT = 8 * 1024 * 1024
+AVATAR_LIMIT = 2 * 1024 * 1024
+PROFILE_DIR = os.path.join(DATA_DIR, 'profile')
 
 os.makedirs(BOOKS_DIR, exist_ok=True)
 os.makedirs(META_DIR, exist_ok=True)
+os.makedirs(PROFILE_DIR, exist_ok=True)
+
+
+def avatar_path(owner):
+    if owner not in ('xiaoyang', 'fufu'):
+        return ''
+    return os.path.join(PROFILE_DIR, f'avatar-{owner}.jpg')
+
+
+def save_avatar(owner, raw):
+    path = avatar_path(owner)
+    if not path:
+        raise ValueError('unknown owner')
+    fd, tmp_path = tempfile.mkstemp(prefix='.avatar-', suffix='.tmp', dir=PROFILE_DIR)
+    try:
+        with os.fdopen(fd, 'wb') as f:
+            f.write(raw)
+            f.flush()
+            os.fsync(f.fileno())
+        os.chmod(tmp_path, 0o644)
+        os.replace(tmp_path, path)
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
 
 class HTMLTextExtractor(HTMLParser):
@@ -513,6 +539,31 @@ class ReadHandler(BaseHTTPRequestHandler):
         elif path == '/api/read/chat-status':
             self._json(chat_status())
 
+        elif path == '/api/read/profile':
+            avatars = {}
+            for owner in ('xiaoyang', 'fufu'):
+                target = avatar_path(owner)
+                if os.path.exists(target):
+                    avatars[owner] = f'/api/read/avatar?owner={owner}&v={int(os.path.getmtime(target))}'
+            self._json({'avatars': avatars})
+
+        elif path == '/api/read/avatar':
+            owner = params.get('owner', [''])[0]
+            target = avatar_path(owner)
+            if not target or not os.path.exists(target):
+                self.send_response(404)
+                self.end_headers()
+                return
+            with open(target, 'rb') as f:
+                raw = f.read()
+            self.send_response(200)
+            self.send_header('Content-Type', 'image/jpeg')
+            self.send_header('Content-Length', str(len(raw)))
+            self.send_header('Cache-Control', 'public, max-age=31536000, immutable')
+            self.send_header('X-Content-Type-Options', 'nosniff')
+            self.end_headers()
+            self.wfile.write(raw)
+
         elif path == '/api/read/search':
             book_id = params.get('id', [''])[0]
             q = params.get('q', [''])[0]
@@ -536,7 +587,45 @@ class ReadHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         content_type = self.headers.get('Content-Type', '')
 
-        if parsed.path == '/api/read/upload':
+        if parsed.path == '/api/read/avatar':
+            if 'multipart/form-data' not in content_type:
+                self._json({'error': 'need multipart'}, 400)
+                return
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length > AVATAR_LIMIT + 512 * 1024:
+                self._json({'error': 'avatar too large', 'limit': AVATAR_LIMIT}, 413)
+                return
+            env = {'REQUEST_METHOD': 'POST', 'CONTENT_TYPE': content_type}
+            form = cgi.FieldStorage(fp=self.rfile, headers=self.headers, environ=env)
+            owner = str(form.getvalue('owner', '') or '')
+            item = form['file'] if 'file' in form else None
+            if owner not in ('xiaoyang', 'fufu') or item is None or not item.file:
+                self._json({'error': 'invalid avatar'}, 400)
+                return
+            raw = item.file.read(AVATAR_LIMIT + 1)
+            if len(raw) > AVATAR_LIMIT:
+                self._json({'error': 'avatar too large', 'limit': AVATAR_LIMIT}, 413)
+                return
+            if image_extension(raw) != '.jpg':
+                self._json({'error': 'avatar must be jpeg'}, 415)
+                return
+            save_avatar(owner, raw)
+            version = int(os.path.getmtime(avatar_path(owner)))
+            self._json({'ok': True, 'owner': owner,
+                        'url': f'/api/read/avatar?owner={owner}&v={version}'})
+
+        elif parsed.path == '/api/read/avatar/reset':
+            length = int(self.headers.get('Content-Length', 0))
+            body = json.loads(self.rfile.read(length)) if length else {}
+            target = avatar_path(str(body.get('owner', '')))
+            if not target:
+                self._json({'error': 'invalid owner'}, 400)
+                return
+            if os.path.exists(target):
+                os.remove(target)
+            self._json({'ok': True})
+
+        elif parsed.path == '/api/read/upload':
             if 'multipart/form-data' in content_type:
                 env = {
                     'REQUEST_METHOD': 'POST',

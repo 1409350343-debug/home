@@ -14,7 +14,7 @@
 <script src="/static/common.js?v=2"></script>
 <script src="/static/core-nav.js?v=4"></script>
 <script>try{if(sessionStorage.getItem('home-splash-seen')==='1')document.documentElement.classList.add('skip-home-splash')}catch(_){}</script>
-<script src="/static/theme.js?v=41"></script>
+<script src="/static/theme.js?v=42"></script>
 <style>
 @font-face{font-family:"Allura";src:url("/static/fonts/Allura-Regular.ttf?v=1") format("truetype");font-weight:400;font-style:normal;font-display:swap}
 :root{--cc-blue:#88ad73;--ink:#496653;--ink2:#6f856f;--ink3:#98a98f;--line:rgba(108,139,91,.2)}
@@ -59,13 +59,13 @@ html.skip-home-splash body.splashing{overflow:auto}
     <div class="days-label">DAYS TOGETHER FOR</div>
     <div class="couple">
       <div class="person">
-        <div class="ava sheep-avatar" role="img" aria-label="小羊">🐑</div>
+        <div class="ava sheep-avatar" data-avatar-owner="xiaoyang" role="img" aria-label="小羊">🐑</div>
         <div class="name">小羊</div>
         <div class="state"><span class="state-chip" id="yangMood">今天还没选心情</span></div>
       </div>
       <div class="bond">♡</div>
       <div class="person">
-        <img class="ava" src="/static/img/fufu/portrait.jpg?v=3" alt="福福">
+        <img class="ava" data-avatar-owner="fufu" src="/static/img/fufu/portrait.jpg?v=4" alt="福福">
         <div class="name">福福</div>
         <div class="state"><span class="state-chip" id="aiState">正在感知时间…</span></div>
       </div>
@@ -107,6 +107,7 @@ html.skip-home-splash body.splashing{overflow:auto}
     <a class="room" href="/settings.html"><i data-lucide="settings-2"></i><span class="room-info">Settings<small>Model · handoff · appearance</small></span><i data-lucide="chevron-right"></i></a>
   </aside>
 </div>
+<script src="/static/profile.js?v=1"></script>
 <script>
 const esc = window.HomeCommon ? HomeCommon.escapeHtml : s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const todayKey = () => {
