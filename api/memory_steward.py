@@ -32,7 +32,10 @@ READING_DIR = Path(
 ).expanduser()
 CHAT_FILE = READING_DIR / "chat.json"
 CHAT_ARCHIVE_FILE = READING_DIR / "chat-archive.jsonl"
-DEFAULT_MODEL = "gemini-2.5-flash"
+PROVIDERS = {
+    "deepseek": {"model": "deepseek-v4-flash", "name": "DeepSeek"},
+    "gemini": {"model": "gemini-2.5-flash", "name": "Gemini"},
+}
 ALLOWED_CATEGORIES = {
     "person", "relationship", "preference", "project", "fact",
     "promise", "event", "growth", "health", "study", "travel", "note",
@@ -61,8 +64,9 @@ def _read_json(path, fallback):
 def default_config():
     return {
         "enabled": False,
+        "provider": "deepseek",
         "api_key": "",
-        "model": DEFAULT_MODEL,
+        "model": PROVIDERS["deepseek"]["model"],
         "auto_capture": True,
         "daily_review": True,
         "batch_min_messages": 6,
@@ -74,7 +78,11 @@ def default_config():
 def load_config():
     cfg = default_config()
     cfg.update(_read_json(CONFIG_FILE, {}))
-    cfg["model"] = DEFAULT_MODEL
+    provider = cfg.get("provider", "deepseek")
+    if provider not in PROVIDERS:
+        provider = "deepseek"
+    cfg["provider"] = provider
+    cfg["model"] = PROVIDERS[provider]["model"]
     return cfg
 
 
@@ -91,23 +99,27 @@ def public_config():
 def save_config(patch):
     old = load_config()
     for key in (
-        "enabled", "auto_capture", "daily_review",
+        "enabled", "provider", "auto_capture", "daily_review",
         "batch_min_messages", "max_wait_minutes", "review_hour",
     ):
         if key in patch:
             old[key] = patch[key]
-    new_key = str(patch.get("api_key") or "").strip()
+    new_key = "".join(str(patch.get("api_key") or "").split())
     if new_key:
+        if len(new_key) < 20 or not re.fullmatch(r"[\x21-\x7e]+", new_key):
+            raise ValueError("API key 格式不完整，请复制完整密钥且不要带空格或换行")
         old["api_key"] = new_key
     if patch.get("clear_api_key"):
         old["api_key"] = ""
         old["enabled"] = False
-    old["model"] = DEFAULT_MODEL
+    if old.get("provider") not in PROVIDERS:
+        raise ValueError("不支持的记忆助手")
+    old["model"] = PROVIDERS[old["provider"]]["model"]
     old["batch_min_messages"] = max(2, min(50, int(old["batch_min_messages"])))
     old["max_wait_minutes"] = max(15, min(1440, int(old["max_wait_minutes"])))
     old["review_hour"] = max(0, min(23, int(old["review_hour"])))
     if old["enabled"] and not old["api_key"]:
-        raise ValueError("请先填写 Gemini API key")
+        raise ValueError(f"请先填写 {PROVIDERS[old['provider']]['name']} API key")
     _atomic_json(CONFIG_FILE, old)
     return public_config()
 
@@ -255,10 +267,62 @@ REVIEW_SCHEMA = {
 }
 
 
-def gemini_json(prompt, schema, config=None):
+def ai_json(prompt, schema, config=None):
     cfg = config or load_config()
     if not cfg.get("api_key"):
-        raise RuntimeError("Gemini API key 未配置")
+        raise RuntimeError("记忆助手 API key 未配置")
+    if cfg.get("provider") == "deepseek":
+        return deepseek_json(prompt, schema, cfg)
+    return gemini_json(prompt, schema, cfg)
+
+
+def deepseek_json(prompt, schema, cfg):
+    url = "https://api.deepseek.com/chat/completions"
+    schema_hint = json.dumps(schema, ensure_ascii=False)
+    payload = {
+        "model": cfg["model"],
+        "messages": [
+            {
+                "role": "system",
+                "content": "你是记忆整理助手。只输出合法 JSON，不要输出 Markdown 或解释。",
+            },
+            {
+                "role": "user",
+                "content": f"{prompt}\n\n请严格按这个 JSON Schema 输出 JSON：\n{schema_hint}",
+            },
+        ],
+        "response_format": {"type": "json_object"},
+        "temperature": 0.15,
+        "max_tokens": 4096,
+    }
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(payload, ensure_ascii=False).encode(),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {cfg['api_key']}",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            result = json.loads(response.read().decode())
+        text = result["choices"][0]["message"]["content"]
+        if not text:
+            raise RuntimeError("DeepSeek 返回了空内容，请稍后重试")
+        return json.loads(text)
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode(errors="replace")[:500]
+        raise RuntimeError(f"DeepSeek HTTP {exc.code}: {detail}") from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"无法连接 DeepSeek：{exc.reason}") from exc
+    except (TimeoutError, OSError) as exc:
+        raise RuntimeError(f"连接 DeepSeek 失败：{exc}") from exc
+    except (KeyError, IndexError, json.JSONDecodeError) as exc:
+        raise RuntimeError("DeepSeek 没有返回可用的结构化结果") from exc
+
+
+def gemini_json(prompt, schema, cfg):
     url = (
         "https://generativelanguage.googleapis.com/v1beta/models/"
         f"{cfg['model']}:generateContent"
@@ -286,6 +350,10 @@ def gemini_json(prompt, schema, config=None):
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode(errors="replace")[:500]
         raise RuntimeError(f"Gemini HTTP {exc.code}: {detail}") from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"无法连接 Gemini：{exc.reason}") from exc
+    except (TimeoutError, OSError) as exc:
+        raise RuntimeError(f"连接 Gemini 失败：{exc}") from exc
     try:
         text = result["candidates"][0]["content"]["parts"][0]["text"]
         return json.loads(text)
@@ -375,7 +443,7 @@ def capture(messages=None, force=False):
 为什么以后值得想起。用户明确说出的稳定偏好、身份、约定或项目现状可用 set_fact；
 不确定的事实也可输出，但 explicit_user_fact=false。不要凭空补充内容，不要把助理建议
 当成用户事实。中文简洁输出。\n\n对话：\n""" + json.dumps(batch, ensure_ascii=False)
-    result = gemini_json(prompt, CAPTURE_SCHEMA, cfg)
+    result = ai_json(prompt, CAPTURE_SCHEMA, cfg)
     written = 0
     for item in result.get("candidates", [])[:20]:
         try:
@@ -430,7 +498,7 @@ def review(force=False):
 长期偏好、人物关系、承诺、事实、项目决定、重要成长必须 keep；仅当内容确实是短期流水、
 重复噪声或已失去用途时才 archive。archive 是可恢复归档，不是删除。保守判断，不确定就
 keep。逐项返回，理由使用中文。\n\n记忆：\n""" + json.dumps(rows, ensure_ascii=False)
-    result = gemini_json(prompt, REVIEW_SCHEMA, cfg)
+    result = ai_json(prompt, REVIEW_SCHEMA, cfg)
     allowed = {row["id"] for row in rows}
     archived = 0
     conn = sqlite3.connect(LMC5_DB)
@@ -475,7 +543,7 @@ keep。逐项返回，理由使用中文。\n\n记忆：\n""" + json.dumps(rows,
 def run_once(force=False):
     cfg, state = load_config(), load_state()
     if not cfg["enabled"]:
-        return {"ok": False, "message": "Gemini 记忆管家未启用"}
+        return {"ok": False, "message": "记忆管家未启用"}
     results = []
     try:
         if cfg["auto_capture"]:

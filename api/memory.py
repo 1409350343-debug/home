@@ -291,6 +291,8 @@ class MemoryHandler(BaseHTTPRequestHandler):
                 self._json_response({"error": "not found"}, 404)
         except (FileNotFoundError, sqlite3.Error, RuntimeError) as exc:
             self._json_response({"error": str(exc)}, 503)
+        except Exception as exc:
+            self._json_response({"error": f"记忆 API 内部错误：{exc}"}, 500)
 
     def do_POST(self):
         try:
@@ -324,6 +326,8 @@ class MemoryHandler(BaseHTTPRequestHandler):
             self._json_response({"error": "invalid request body"}, 400)
         except (FileNotFoundError, sqlite3.Error, RuntimeError) as exc:
             self._json_response({"error": str(exc)}, 503)
+        except Exception as exc:
+            self._json_response({"error": f"记忆 API 内部错误：{exc}"}, 500)
 
     def _read_json(self):
         length = int(self.headers.get("Content-Length", 0))

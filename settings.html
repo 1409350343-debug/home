@@ -193,16 +193,20 @@
   </div>
 </div>
 
-<!-- Gemini 记忆管家 -->
+<!-- AI 记忆管家 -->
 <div class="acc glassy" id="acc-memory-steward">
   <div class="a-head" onclick="toggleAcc('acc-memory-steward')">
     <div class="a-icon"><i data-lucide="sparkles"></i></div>
-    <div class="a-title"><b>Gemini 记忆管家</b><small id="steward-sub">检查配置中…</small></div>
+    <div class="a-title"><b>AI 记忆管家</b><small id="steward-sub">检查配置中…</small></div>
     <span class="chev">▶</span>
   </div>
   <div class="a-body">
-    <div class="hint">自动从小窝与 TG 共用的聊天流水中筛选长期记忆，并每天整理一次超过 7 天的详细流水。只有出现新对话时才会批量请求 Gemini，不会每分钟消耗 Token。</div>
-    <input type="password" id="steward-key" autocomplete="off" placeholder="Gemini API key">
+    <div class="hint">自动从小窝与 TG 共用的聊天流水中筛选长期记忆，并每天整理一次超过 7 天的详细流水。只有出现新对话时才会批量请求 AI，不会每分钟消耗 Token。</div>
+    <select id="steward-provider" onchange="updateStewardProvider()">
+      <option value="deepseek">DeepSeek（推荐）</option>
+      <option value="gemini">Gemini</option>
+    </select>
+    <input type="password" id="steward-key" autocomplete="off" placeholder="DeepSeek API key">
     <div class="row-flex">
       <span>启用记忆管家<small>总开关，关闭后不请求 Gemini</small></span>
       <input type="checkbox" id="steward-enabled" style="width:20px;height:20px;accent-color:#88ad73">
@@ -348,16 +352,31 @@
   };
 
   // ===== Gemini 记忆管家 =====
+  async function stewardJson(response){
+    const text=await response.text();
+    let data={};
+    if(text){
+      try{data=JSON.parse(text)}
+      catch(_){
+        const preview=text.replace(/\s+/g,' ').trim().slice(0,160);
+        throw new Error(`服务器返回了无法识别的内容（HTTP ${response.status}）${preview?'：'+preview:''}`);
+      }
+    }
+    if(!response.ok)throw new Error(data.error||data.message||`请求失败（HTTP ${response.status}）`);
+    return data;
+  }
   function loadMemorySteward(){
     Promise.all([
-      fetch('/api/memory/steward/config?t='+Date.now()).then(r=>r.json()),
-      fetch('/api/memory/steward/status?t='+Date.now()).then(r=>r.json())
+      fetch('/api/memory/steward/config?t='+Date.now()).then(stewardJson),
+      fetch('/api/memory/steward/status?t='+Date.now()).then(stewardJson)
     ]).then(([c,s])=>{
+      document.getElementById('steward-provider').value=c.provider||'deepseek';
       document.getElementById('steward-enabled').checked=!!c.enabled;
       document.getElementById('steward-capture').checked=c.auto_capture!==false;
       document.getElementById('steward-review').checked=c.daily_review!==false;
       if(c.key_masked)document.getElementById('steward-key').placeholder='已保存：'+c.key_masked+'（输入新值可替换）';
-      document.getElementById('steward-sub').textContent=c.enabled?'Gemini 2.5 Flash 正在值班':(c.configured?'已配置，尚未启用':'需要填写 API key');
+      const provider=c.provider==='gemini'?'Gemini':'DeepSeek';
+      document.getElementById('steward-sub').textContent=c.enabled?`${provider} 正在值班`:(c.configured?'已配置，尚未启用':'需要填写 API key');
       document.getElementById('steward-status').textContent=[
         s.last_result||'尚未运行',
         s.pending_messages?`待处理 ${s.pending_messages} 条新消息`:'',
@@ -367,23 +386,32 @@
     }).catch(()=>{document.getElementById('steward-sub').textContent='记忆 API 没醒'});
   }
   window.saveMemorySteward=function(){
-    const key=document.getElementById('steward-key').value.trim();
+    const key=document.getElementById('steward-key').value.replace(/\s+/g,'');
+    if(key&&(key.length<20||!/^[\x21-\x7E]+$/.test(key))){
+      alert('API key 格式不完整。请复制完整密钥，不要带空格、换行、名称或网址。');
+      return;
+    }
     const body={
+      provider:document.getElementById('steward-provider').value,
       enabled:document.getElementById('steward-enabled').checked,
       auto_capture:document.getElementById('steward-capture').checked,
       daily_review:document.getElementById('steward-review').checked
     };
     if(key)body.api_key=key;
     fetch('/api/memory/steward/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
-      .then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||'保存失败');return d})
+      .then(stewardJson)
       .then(()=>{document.getElementById('steward-key').value='';const e=document.getElementById('steward-ok');e.style.display='block';setTimeout(()=>e.style.display='none',2200);loadMemorySteward()})
       .catch(e=>alert(e.message));
   };
   window.runMemorySteward=function(){
-    const box=document.getElementById('steward-status');box.textContent='Gemini 正在筛选与整理…';
+    const box=document.getElementById('steward-status');box.textContent='AI 正在筛选与整理…';
     fetch('/api/memory/steward/run',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})
-      .then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||'运行失败');return d})
+      .then(stewardJson)
       .then(()=>loadMemorySteward()).catch(e=>{box.textContent='运行失败：'+e.message});
+  };
+  window.updateStewardProvider=function(){
+    const provider=document.getElementById('steward-provider').value;
+    document.getElementById('steward-key').placeholder=(provider==='gemini'?'Gemini':'DeepSeek')+' API key';
   };
 
   window.addEventListener('DOMContentLoaded', ()=>{
